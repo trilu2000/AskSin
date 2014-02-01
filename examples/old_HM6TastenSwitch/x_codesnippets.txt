@@ -1,0 +1,97 @@
+-	// test cnlDefTypeIdx(uint8_t cnl, uint8_t lst)
+	// purpose is to get the respective line number from cnlDefType table
+	Serial << "test cnlDefTypeIdx\n";
+	for (uint8_t i = 0; i < 20; i++) {
+		for (uint8_t j = 0; j < 20; j++) {
+			uint8_t ret = rpdb.cnlDefTypeIdx(i, j);
+			if (ret != 0xff) Serial << "cnl:" << i << ", lst:" << j << ", idx:" << ret << '\n';
+		}
+	}
+
+
+-	// cnlDefTypeAddr(uint8_t cnl, uint8_t lst, uint8_t peerIdx);
+	// purpose is to get the starting address in eeprom for the given channel, list, and peer index
+	Serial << "addr1: " << rpdb.cnlDefTypeAddr(2, 1, 0) << '\n';
+	Serial << "addr2: " << rpdb.cnlDefTypeAddr(2, 0, 0) << '\n';
+
+
+-	// test cnlDefPeerIdx(uint8_t cnl)
+	// purpose is to get the respective line number for a given channel from cnlDefType table
+	Serial << "test cnlDefPeerIdx\n";
+	for (uint8_t i = 0; i < 20; i++) {
+			uint8_t ret = rpdb.cnlDefPeerIdx(i);
+		if (ret != 0xff) Serial << "cnl:" << i << ", idx:" << ret << '\n';
+	}
+
+
+-	// test getCnlByPeer(uint8_t *peer)
+	// purpose is to find the respective channel by a given peer id
+	uint8_t peer[] = {0x22,0x02,0x03,0x04};
+	Serial << "cnl:" << rpdb.getCnlByPeer(peer) << ", for peer: " << pHex(peer,4) << '\n';	
+
+
+-	// test getIdxByPeer(uint8_t cnl, uint8_t *peer)
+	// purpose is to find the index of a given peer and channel
+	uint8_t peer[] = {0x22,0x02,0x03,0x04};
+	Serial << "idx:" << rpdb.getIdxByPeer(2,peer) << ", for peer: " << pHex(peer,4) << '\n';
+
+
+-	// test getPeerByIdx(uint8_t cnl, uint8_t idx, uint8_t *peer)
+	// purpose is to get the peer array filled by given channel and index
+	uint8_t peer[4];
+	Serial << "ret:" << rpdb.getPeerByIdx(2, 4, peer) << ", peer: " << pHex(peer,4) << '\n';
+
+
+-	// cntFreePeerSlot(uint8_t cnl)
+	// purpose is to get the amount of free peer slots by the given channel
+	Serial << "cnt: " << rpdb.cntFreePeerSlot(2) << '\n';
+
+
+-	// getFreePeerSlot(uint8_t cnl)
+	// purpose is to get the index of a free peer slot by the given channel
+	Serial << "idx: " << rpdb.getFreePeerSlot(2) << '\n';
+
+
+-	// remPeerFromMsg(uint8_t cnl, uint8_t *peer)
+	// purpose is to remove peers from the peer database
+	uint8_t peer[] = {0x13 ,0x02 ,0x03 ,0x04 ,0x05};
+	Serial << "ret:" << rpdb.remPeerFromMsg(1, peer) << '\n';
+
+
+-	// addPeerFromMsg(uint8_t cnl, uint8_t *peer)
+	// purpose is to add peers to the peer database
+	uint8_t peer1[] = {0x33 ,0x44 ,0x55 ,0x04 ,0x05};
+	Serial << "ret:" << rpdb.addPeerFromMsg(2, peer1) << '\n';
+
+
+-	// valPeerFromMsg(uint8_t cnl, uint8_t *peer)
+	// purpose is to validate if a peer is known
+	uint8_t peer[] = {0x65,0x02,0x03,0x00};
+	uint32_t t = millis();
+	Serial << "ret: " << rpdb.valPeerFromMsg(peer) << '\n';
+	Serial << "t: " << millis() - t << '\n';
+
+
+-	// getPeerForMsg(uint8_t cnl, uint8_t *buf)
+	// purpose is to get a buffer filled with all peers from the given channel
+	uint8_t test[20],ret;
+	do {
+		ret = rpdb.getPeerForMsg(6, test);
+		Serial << "ret: " << ret << ", pStr: " << pHex(test,ret) << '\n';
+	} while ((ret != 0) && (ret != 0xff));
+
+
+-	// getListForMsg2(uint8_t cnl, uint8_t lst, uint8_t *peer, uint8_t *buf)
+	// purpose is to get an answer to a channel request	
+	uint8_t buf[20], ret, peer[4] = {0,0,0,0};
+	do {
+		ret = rpdb.getListForMsg2(0, 0, peer, buf);
+		Serial << "ret: " << ret << ", data: " << pHex(buf,ret) << '\n';
+	} while ((ret != 0) && (ret != 0xff));
+
+
+-	// setListFromMsg(uint8_t cnl, uint8_t lst, uint8_t *peer, uint8_t len, uint8_t *buf)
+	// purpose is to write the bytes from buffer to the respective register
+	uint8_t peer[] = {0,0,0,0};
+	uint8_t buf[] = {0x01,0xff, 0x02,0xfe, 0x0a, 0x63, 0x0b, 0x19, 0x0c, 0x63, 0x18, 0xfd};
+	rpdb.setListFromMsg(0, 0, peer, 12, buf);
