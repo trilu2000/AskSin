@@ -148,9 +148,10 @@ foreach my $cnt (sort{$a <=> $b}(keys %cnlLstType)) {													# step through
 		
 		my $fillText = "";
 		if (($lastBits) && (int($regL) == int($reg))) {													# check if we are in the same byte
-			$fillText = "    uint8_t" ." "x22 .":" .(($reg - $regL)*10) .";";							# add the missing bits as a line 
+			$fillText = "    uint8_t" ." "x22 .":" .int(($reg - $regL)*10) .";";							# add the missing bits as a line 
 			$fillText .= " "x5 ."//"; #." "x7 ."l:$regL, s:$reg";										# some debug
 			$fillText .= "\n";
+      if  ((($reg - $regL)*10) == 0) {$fillText = "";}
 
 		} elsif (($lastBits) || ($regSBit)) {															# not in the same byte
 			$fillText = "    uint8_t" ." "x22 .":" .($lastBits + $regSBit) .";";						# add the missing bits as a line 
@@ -182,7 +183,7 @@ foreach my $cnt (sort{$a <=> $b}(keys %cnlLstType)) {													# step through
 	}
 	
 	if ($regL) {																						# add the missing bytes on the end
-		my $lmissBits = 8 - int( ($regL - int($regL)) * 10);
+		my $lmissBits = 8 - int( ($regL - int($regL)) * 11);
 		my $lmissText = "    uint8_t" ." "x22 .":" .$lmissBits .";";									# add the missing bits as a line 
 		$lmissText .= " "x5 ."//";																		# some debug
 		$lmissText .= "\n";
@@ -292,7 +293,7 @@ print "}; // " .(scalar( keys %cnlDefIndex)*11) ." byte \n\n\n";
 
 print "//- ----------------------------------------------------------------------------------------------------------------------\n";
 print "//- handover to AskSin lib -----------------------------------------------------------------------------------------------\n";
-print "RPDB::s_devDef dDef = {\n";
+print "HM::s_devDef dDef = {\n";
 print "    " .(scalar( keys %regLfull)-1) .", " .scalar( keys %cnlDefIndex) .", sliceStr, cnlDefType,\n";
 print "}; // 6 byte\n\n\n";
 
@@ -300,9 +301,9 @@ print "}; // 6 byte\n\n\n";
 print "//- ----------------------------------------------------------------------------------------------------------------------\n";
 print "//- eeprom definition ----------------------------------------------------------------------------------------------------\n";
 print "// define start address  and size in eeprom for magicNumber, peerDB, regsDB, userSpace  \n";
-print "RPDB::s_eeprom ee[] = {\n";
-print "    {" .sprintf("0x%.4x", 0) .", " .sprintf("0x%.4x", 2)      .", " .sprintf("0x%.4x", 2+$pPeer) .", " .sprintf("0x%.4x", 2+$pPeer+$pAddr) .",}\n";  
-print "    {" .sprintf("0x%.4x", 2) .", " .sprintf("0x%.4x", $pPeer) .", " .sprintf("0x%.4x", $pAddr)   .", " .sprintf("0x%.4x", 0)               .",}\n";  
+print "HM::s_eeprom ee[] = {\n";
+print "    {" .sprintf("0x%.4x", 0) .", " .sprintf("0x%.4x", 2)      .", " .sprintf("0x%.4x", 2+$pPeer) .", " .sprintf("0x%.4x", 2+$pPeer+$pAddr) .",},\n";  
+print "    {" .sprintf("0x%.4x", 2) .", " .sprintf("0x%.4x", $pPeer) .", " .sprintf("0x%.4x", $pAddr)   .", " .sprintf("0x%.4x", 0)               .",},\n";  
 print "}; // 16 byte\n\n\n";
 
 # something for default settings....

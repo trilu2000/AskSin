@@ -48,7 +48,7 @@ void MyClassName::buttonAction(uint8_t bEvent) {
 	//
 	// 255 - key press, for stay awake issues
 
-	hm->stayAwake(5000);																// overcome the problem of not getting a long repeated key press
+	hm->stayAwake(1000);																// overcome the problem of not getting a long repeated key press
 	if (bEvent == 255) return;															// was only a wake up message
 
 	#ifdef DM_DBG
@@ -56,8 +56,10 @@ void MyClassName::buttonAction(uint8_t bEvent) {
 	#endif
 	
 	if (regCnl == 0) {																	// config button mode
-
-		if (bEvent == 0) hm->startPairing();											// short key press, send pairing string
+		if (bEvent == 0) {
+			hm->startPairing();															// short key press, send pairing string
+			hm->stayAwake(20000);														// configuration mode, stay alive for a long time
+		}
 		if (bEvent == 2) hm->statusLed.set(STATUSLED_2, STATUSLED_MODE_BLINKSFAST);		// long key press could mean, you like to go for reseting the device
 		if (bEvent == 6) hm->statusLed.set(STATUSLED_2, STATUSLED_MODE_OFF);			// time out for double long, stop slow blinking
 		if (bEvent == 5) hm->reset();													// double long key press, reset the device

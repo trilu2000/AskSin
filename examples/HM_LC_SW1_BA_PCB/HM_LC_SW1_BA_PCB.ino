@@ -33,7 +33,7 @@ HM::s_jumptable jTbl[] = {																// jump table for HM communication
 	{ 0x01, 0xff, 0x06, HM_Config_Changed },
 	{ 0x00 }
 };
-Buttons button[7];																		// declare remote button object
+Buttons button[1];																		// declare remote button object
 
 //- main functions --------------------------------------------------------------------------------------------------------
 void setup() {
@@ -50,29 +50,12 @@ void setup() {
 	hm.battery.config(1,0,1000);														// set battery measurement
 	hm.battery.setVoltage(31);															// voltage to 3.1 volt
 
-	hm.setPowerMode(4);																	// power mode for HM device
+	hm.setPowerMode(0);																	// power mode for HM device
 	hm.init();																			// initialize the hm module
 
 	button[0].regInHM(0,&hm);															// register buttons in HM per channel, handover HM class pointer
 	button[0].config(8, &buttonEvent);													// configure button on specific pin and handover a function pointer to the main sketch
 	
-	button[1].regInHM(1,&hm);
-	button[1].config(A0, &buttonEvent);
-	
-	button[2].regInHM(2,&hm);
-	button[2].config(A1, &buttonEvent);
-	
-	button[3].regInHM(3,&hm);
-	button[3].config(A2, &buttonEvent);
-	
-	button[4].regInHM(4,&hm);
-	button[4].config(A3, &buttonEvent);
-	
-	button[5].regInHM(5,&hm);
-	button[5].config(A4, &buttonEvent);
-	
-	button[6].regInHM(6,&hm);
-	button[6].config(A5, &buttonEvent);
 	
 	Serial << "\npair: " << pHex(regs.ch0.l0.pairCentral,3) << '\n';	
 }
