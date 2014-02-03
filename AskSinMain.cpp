@@ -176,8 +176,13 @@ void     HM::prepEEprom(void) {
 	uint8_t  *p = (uint8_t*)dDef.chPtr;													// cast devDef to char
 	
 	// calculate crc of chDefType table
-	for (uint8_t i = 0; i < (dDef.lstNbr * sizeof(s_cnlDefType)); i++) {				// step through all bytes of chDefType table
-		crc = crc16(crc, _pgmB(&p[i]));													// calculate the 16bit checksum for the table
+	//for (uint8_t i = 0; i < (dDef.lstNbr * sizeof(s_cnlDefType)); i++) {				// step through all bytes of chDefType table
+	//	crc = crc16(crc, _pgmB(&p[i]));													// calculate the 16bit checksum for the table
+	//}
+	for (uint8_t i = 0; i < dDef.lstNbr; i++) {											// step through all lines of chDefType table
+		for (uint8_t j = 0; j < 9; j++) {												// step through the first 9 bytes
+			crc = crc16(crc, _pgmB(&p[(i*11)+j]));										// calculate the 16bit checksum for the table
+		}
 	}
 	
 	#ifdef RPDB_DBG																		// some debug message
@@ -185,6 +190,7 @@ void     HM::prepEEprom(void) {
 	#endif
 
 	if (crc != getEeWo(ee[0].magicNr)) {												// compare against eeprom's magic number
+		Serial << "prep eeprom\n";
 		#ifdef RPDB_DBG
 		Serial << F("format eeprom for:\n");
 		Serial << F("peerDB, addr:") << ee[0].peerDB << F(", len:") << ee[1].peerDB << '\n';
@@ -1025,7 +1031,7 @@ void     HM::recv_PeerEvent(void) {
 
 	getList3ByPeer(cnl, peer);															// load list3
 	
-	module_Jump(recv_msgTp, recv_by10, recv_by11, recv_by10, recv_payLoad+1, recv_len-10);
+	module_Jump(recv_msgTp, recv_by10, recv_by11, cnl, recv_payLoad+1, recv_len-10);
 	
 	// send appropriate answer ---------------------------------------------
 	// answer should be initiated by client function in user area
@@ -1049,9 +1055,9 @@ uint8_t  HM::main_Jump(void) {
 		s_jumptable *p = &jTbl[i];														// some shorthand
 		if (p->by3 == 0) break;															// break if on end of list
 		
-		if ((p->by3 != recv_msgTp) && (p->by3  != 0x0f)) continue;						// message type didn't fit, therefore next
-		if ((p->by10 != recv_by10) && (p->by10 != 0x0f)) continue;						// byte 10 didn't fit, therefore next
-		if ((p->by11 != recv_by11) && (p->by11 != 0x0f)) continue;						// byte 11 didn't fit, therefore next
+		if ((p->by3 != recv_msgTp) && (p->by3  != 0xff)) continue;						// message type didn't fit, therefore next
+		if ((p->by10 != recv_by10) && (p->by10 != 0xff)) continue;						// byte 10 didn't fit, therefore next
+		if ((p->by11 != recv_by11) && (p->by11 != 0xff)) continue;						// byte 11 didn't fit, therefore next
 		
 		// if we are here, all conditions are checked and ok
 		p->fun(recv_payLoad, recv_len - 9);												// and jump into

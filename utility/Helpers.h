@@ -13,8 +13,12 @@
 	#include "WProgram.h"
 #endif
 
+#include "utility/Serial.h"
+
 uint16_t freeMem(void);
 uint16_t crc16(uint16_t crc, uint8_t a);
 
+uint32_t byteTimeCvt(uint8_t tTime);
+uint32_t intTimeCvt(uint16_t iTime);
 
 #endif

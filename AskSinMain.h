@@ -146,7 +146,6 @@ class HM {
 	void     setPowerMode(uint8_t mode);												// set power mode for HM device
 	void     stayAwake(uint32_t xMillis);												// switch TRX module in RX mode for x milliseconds
 
-
 	//- some functions for checking the config, preparing eeprom and load defaults to eeprom or in regs structure
 	void     printConfig(void);															// Ok, show the config on serial console
 	void     prepEEprom(void);															// Ok, check chDefType[] for changes and format eeprom space accordingly

@@ -1,6 +1,7 @@
 //- load library's --------------------------------------------------------------------------------------------------------
 #include "Register.h"																	// configuration sheet
 #include <Buttons.h>																	// remote buttons library
+#include <Relay.h>																		// relay library
 
 //- serial communication --------------------------------------------------------------------------------------------------
 const uint8_t helptext1[] PROGMEM = {													// help text for serial console
@@ -28,12 +29,14 @@ InputParser parser (50, cmdTab);
 //- homematic communication -----------------------------------------------------------------------------------------------
 HM::s_jumptable jTbl[] = {																// jump table for HM communication
 	// byte3, byte10, byte11, function to call											// 0xff means - any byte
-	{ 0x01, 0xff, 0x0e, HM_Status_Request },
+//	{ 0x01, 0xff, 0x0e, HM_Status_Request },
 	{ 0x11, 0x04, 0x00, HM_Reset_Cmd },
-	{ 0x01, 0xff, 0x06, HM_Config_Changed },
+//	{ 0x01, 0xff, 0x06, HM_Config_Changed },
+//	{ 0x40, 0xff, 0xff, HM_Remote_Event },
 	{ 0x00 }
 };
 Buttons button[1];																		// declare remote button object
+Relay   relay[1];																		// declare the relay object
 
 //- main functions --------------------------------------------------------------------------------------------------------
 void setup() {
@@ -54,8 +57,10 @@ void setup() {
 	hm.init();																			// initialize the hm module
 
 	button[0].regInHM(0,&hm);															// register buttons in HM per channel, handover HM class pointer
-	button[0].config(8, &buttonEvent);													// configure button on specific pin and handover a function pointer to the main sketch
-	
+	button[0].config(8, NULL);															// configure button on specific pin and handover a function pointer to the main sketch
+
+	relay[0].regInHM(1,&hm);															// register relay class in HM to respective channel	
+	relay[0].config(0,3,0,5,5);															// configure the relay to monostable, therefore only one HW pin needed
 	
 	Serial << "\npair: " << pHex(regs.ch0.l0.pairCentral,3) << '\n';	
 }
@@ -68,18 +73,18 @@ void loop() {
 
 //- HM functions ----------------------------------------------------------------------------------------------------------
 void HM_Status_Request(uint8_t *data, uint8_t len) {
-	Serial << F("status request, data: ") << pHex(data,len) << '\n';
+//	Serial << F("status request, data: ") << pHex(data,len) << '\n';
 }
 void HM_Reset_Cmd(uint8_t *data, uint8_t len) {
-	Serial << F("reset, data: ") << pHex(data,len) << '\n';
+//	Serial << F("reset, data: ") << pHex(data,len) << '\n';
 	hm.send_ACK();																		// send an ACK
 	if (data[0] == 0) hm.reset();														// do a reset only if channel is 0
 }
 void HM_Config_Changed(uint8_t *data, uint8_t len) {
-	Serial << F("config changed, data: ") << pHex(data,len) << '\n';
+//	Serial << F("config changed, data: ") << pHex(data,len) << '\n';
 }
-void buttonEvent(uint8_t idx, uint8_t state) {	
-	Serial << F("bE, cnl: ") << idx << F(", state: ") << state << '\n';
+void HM_Remote_Event(uint8_t *data, uint8_t len) {
+//	Serial << F("remote event, data: ") << pHex(data,len) << '\n';
 }
 
 

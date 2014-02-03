@@ -118,8 +118,8 @@ HM::s_eeprom ee[] = {
 const uint8_t regs01[] PROGMEM = {0x00,0x00,0x63,0x19,0x63};
 const uint8_t regs02[] PROGMEM = {0xff,0xff,0xff};
 
-const uint8_t regs03[] PROGMEM = {0x10,0x02,0x03,0x04};
-const uint8_t regs04[] PROGMEM = {0x11,0x02,0x03,0x04};
+const uint8_t regs03[] PROGMEM = {0x1f,0xa6,0x5c,0x06};
+const uint8_t regs04[] PROGMEM = {0x1f,0xa6,0x5c,0x05};
 const uint8_t regs05[] PROGMEM = {0x12,0x02,0x03,0x04};
 const uint8_t regs06[] PROGMEM = {0x13,0x02,0x03,0x04};
 const uint8_t regs07[] PROGMEM = {0x13,0x02,0x03,0x05};
@@ -136,8 +136,8 @@ s_defaultRegsTbl defaultRegsTbl[] = {
 	{1, 0, 0, 0, 5, regs01},
 //	{1, 1, 1, 0, 3, regs02},
 
-//	{0, 1, 4, 0, 4, regs03},
-//	{0, 1, 4, 1, 4, regs04},
+	{0, 1, 4, 0, 4, regs03},
+	{0, 1, 4, 1, 4, regs04},
 //	{0, 1, 4, 2, 4, regs05},
 //	{0, 1, 4, 3, 4, regs06},
 //	{0, 1, 4, 4, 4, regs07},

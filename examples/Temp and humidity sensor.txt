@@ -1,0 +1,64 @@
+Timing zum senden ist:
+Die Formel ist:
+#    int32_t result = (((_address << 8) | messageCounter) * 1103515245 + 12345) >> 16;
+#   return (result & 0xFF) + 480;
+
+Das Resultat sind die Anzahl der 250ms steps
+
+_address = eigener HMID
+messageCounter = eigener Counter
+
+Temperatur wird wie folgt codiert:
+
+
+Luftfeuchte wird wie folgt codiert:
+
+
+
+HM-WDS30-T-O
+JEQ0490430
+firmware 1.2
+subType  THSensor
+
+Activity     alive   2014-02-02 14:03:29
+airpress     46702   2014-01-27 16:23:57
+humidity     100     2014-02-02 11:46:12
+state        T: 23.0 2014-02-03 16:03:37
+temperature  23.0    2014-02-03 16:06:16
+
+list:         register | range              | peer     | description
+   0: pairCentral      |   0 to 16777215    |          | pairing to central
+   
+
+"HM-WDS10-TH-O"     =>{ burstRx         =>1},
+"003D" => {name=>"HM-WDS10-TH-O"           ,st=>'THSensor'          ,cyc=>'00:10' ,rxt=>'c:w:f'  ,lst=>'p'            ,chn=>"",},
+
+ temp in Grad*10
+ 
+CUL_0: A0C31867020E509000000019464 -79.5
+2013.12.16 17:41:38.855 5: CUL_0 dispatch A0C31867020E509000000019464::-79.5:CUL_0
+2013.12.16 17:41:38.866 4: RCV L:0C N:31 F:86 CMD:70 SRC:Warmwasserboiler DST:broadcast 019464 (WeatherEvent TEMP:40.4 HUM:100) (,WAKEMEUP,CFG,RPTEN)
+2013.12.16 17:41:38.868 5: Triggering CUL_0 (1 changes)
+2013.12.16 17:41:38.872 5: Notify loop for CUL_0 RCV L:0C N:31 F:86 CMD:70 SRC:Warmwasserboiler DST:broadcast 019464 (WeatherEvent TEMP:40.4 HUM:100) (,WAKEMEUP,CFG,RPTEN)
+2013.12.16 17:41:38.922 5: Triggering Warmwasserboiler (3 changes)
+
+
+
+set CUL_HM_ID_00A8_20BEDC raw ++A001F1123420BEDC0103
+set CUL_HM_ID_00A8_20BEDC raw ++A001F1123420BEDC0203
+set CUL_HM_ID_00A8_20BEDC raw ++A001F1123420BEDC0303
+set CUL_HM_ID_00A8_20BEDC raw ++A0 01 F1 12 34 20 BE DC 00 04 00 00 00 00 00
+set CUL_HM_ID_00A8_20BEDC raw ++A001F1123420BEDC01040000000001
+set CUL_HM_ID_00A8_20BEDC raw ++A001F1123420BEDC0204000E
+set CUL_HM_ID_00A8_20BEDC raw ++A001F1123420BEDC0204010E
+
+
+2013-07-18_23:01:56 CUL_HM_HM_WDS30_OT2_SM_20BEDC noReceiver: src:20BEDC 8653 00 41 00 EF 42 00 EC 43 00 03 44 FF FD
+2013-07-18_23:04:30 CUL_HM_HM_WDS30_OT2_SM_20BEDC noReceiver: src:20BEDC 8653 004100EF4200EC43000344FFFD
+2013-07-18_23:06:50 CUL_HM_HM_WDS30_OT2_SM_20BEDC noReceiver: src:20BEDC 8653 004100EF4200EC43000344FFFD
+2013-07-18_23:08:55 CUL_HM_HM_WDS30_OT2_SM_20BEDC noReceiver: src:20BEDC 8653 004100EF4200EC43000344FFFD
+2013-07-18_23:11:50 CUL_HM_HM_WDS30_OT2_SM_20BEDC noReceiver: src:20BEDC 8653 004100ED4200EB43000244FFFE
+2013-07-18_23:14:31 CUL_HM_HM_WDS30_OT2_SM_20BEDC noReceiver: src:20BEDC 8653 004100ED4200EB43000244FFFE
+
+C4 8670 1F4CB9 000000 00D431
+

@@ -7,6 +7,10 @@
 //- -----------------------------------------------------------------------------------------------------------------------
 #include "Buttons.h"
 
+const uint8_t peerOdd[] =    {0};														// default settings for list3 or list4
+const uint8_t peerEven[] =   {0};
+const uint8_t peerSingle[] = {0};
+
 //- user code here --------------------------------------------------------------------------------------------------------
 void MyClassName::config(uint8_t Pin, void tCallBack(uint8_t, uint8_t)) {
 

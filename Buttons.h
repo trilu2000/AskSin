@@ -20,11 +20,8 @@
 #include "utility/PinChangeIntHandler.h"
 
 #define MyClassName Buttons																// module name as macro to overcome the problem of renaming functions all the time
-//#define DM_DBG																			// debug message flag
+//#define DM_DBG																		// debug message flag
 
-const uint8_t peerOdd[] =    {0};														// default settings for list3 or list4
-const uint8_t peerEven[] =   {0};
-const uint8_t peerSingle[] = {0};
 
 class MyClassName {
   //- user code here ------------------------------------------------------------------------------------------------------
