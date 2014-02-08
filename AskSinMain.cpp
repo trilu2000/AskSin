@@ -95,14 +95,10 @@ void     HM::setPowerMode(uint8_t mode) {
 	// as output we need a status indication if TRX868 module is in receive, send or idle mode
 	// idle mode is then the indication for power down mode of AVR
 
-	switch (mode) {
-		case 1:																			// no power savings, RX is in receiving mode
-		powr.mode = 1;																	// set power mode
+	if        (mode == 1) {																// no power savings, RX is in receiving mode
 		set_sleep_mode(SLEEP_MODE_IDLE);												// normal power saving
-		break;
 
-		case 2:																			// some power savings, RX is in burst mode
-		powr.mode = 2;																	// set power mode
+	} else if (mode == 2) {																// some power savings, RX is in burst mode
 		powr.parTO = 15000;																// pairing timeout
 		powr.minTO = 2000;																// stay awake for 2 seconds after sending
 		powr.nxtTO = millis() + 250;													// check in 250ms for a burst signal
@@ -112,9 +108,8 @@ void     HM::setPowerMode(uint8_t mode) {
 		WDTCSR = 1<<WDP2;																// 250 ms
 		powr.wdTme = 256;																// store the watch dog time for adding in the poll function
 		set_sleep_mode(SLEEP_MODE_PWR_DOWN);											// max power saving
-		break;
 
-		case 3:																			// most power savings, RX is off beside a special function where RX stay in receive for 30 sec
+	} else if (mode == 3) {																// most power savings, RX is off beside a special function where RX stay in receive for 30 sec
 		MCUSR &= ~(1<<WDRF);															// clear the reset flag
 		WDTCSR |= (1<<WDCE) | (1<<WDE);													// set control register to change enabled and enable the watch dog
 		//WDTCSR = 1<<WDP2;																// 250 ms
@@ -122,19 +117,16 @@ void     HM::setPowerMode(uint8_t mode) {
 		//WDTCSR = 1<<WDP0 | 1<<WDP1 | 1<<WDP2;											// 2000 ms
 		WDTCSR = 1<<WDP0 | 1<<WDP3;														// 8000 ms
 		powr.wdTme = 8190;																// store the watch dog time for adding in the poll function
-
-		case 4:																			// most power savings, RX is off beside a special function where RX stay in receive for 30 sec
-		powr.mode = mode;																// set power mode
+	}
+	
+	if ((mode == 3) || (mode == 4))	{													// most power savings, RX is off beside a special function where RX stay in receive for 30 sec
 		powr.parTO = 15000;																// pairing timeout
 		powr.minTO = 1000;																// stay awake for 1 seconds after sending
 		powr.nxtTO = millis() + 4000;													// stay 4 seconds awake to finish boot time
-
 		set_sleep_mode(SLEEP_MODE_PWR_DOWN);											// max power saving
-
-		break;
-		default:																		// no power saving, same as case 0, if user had chosen a wrong power saving mode
-		powr.mode = 0;																	// set power mode
 	}
+
+	powr.mode = mode;																	// set power mode
 	powr.state = 1;																		// after init of the TRX module it is in RX mode
 	//Serial << "pwr.mode:" << powr.mode << '\n';
 }
@@ -175,10 +167,6 @@ void     HM::prepEEprom(void) {
 	uint16_t crc = 0;																	// define variable for storing crc
 	uint8_t  *p = (uint8_t*)dDef.chPtr;													// cast devDef to char
 	
-	// calculate crc of chDefType table
-	//for (uint8_t i = 0; i < (dDef.lstNbr * sizeof(s_cnlDefType)); i++) {				// step through all bytes of chDefType table
-	//	crc = crc16(crc, _pgmB(&p[i]));													// calculate the 16bit checksum for the table
-	//}
 	for (uint8_t i = 0; i < dDef.lstNbr; i++) {											// step through all lines of chDefType table
 		for (uint8_t j = 0; j < 9; j++) {												// step through the first 9 bytes
 			crc = crc16(crc, _pgmB(&p[(i*11)+j]));										// calculate the 16bit checksum for the table
@@ -261,6 +249,12 @@ void     HM::regCnlModule(uint8_t cnl, s_mod_dlgt Delegate, uint16_t *mainList, 
 	}
 
 }
+uint32_t HM::getHMID(void) {
+	return (uint32_t)dParm.HMID[0] << 16 | (uint16_t)dParm.HMID[1] << 8 | (uint8_t)dParm.HMID[2];
+}
+uint8_t  HM::getMsgCnt(void) {
+	return send.mCnt - 1;
+}
 
 //- external functions for pairing and communicating with the module
 void     HM::startPairing(void) {														// send a pairing request to master
@@ -320,18 +314,20 @@ void     HM::sendPeerREMOTE(uint8_t cnl, uint8_t longPress, uint8_t lowBat) {
 	//	   LOWBAT   => '00,2,$val=(hex($val)&0x80)?1:0',
 	//	   COUNTER  => "02,2", } },
 
-	//              type  source     target     msg   cnt   
+	//              type  source     target     msg   cnt
 	// l> 0B 0A B4  40    1F A6 5C   1F B7 4A   01    01 (l:12)(160188)
 	// l> 0B 0B B4 40 1F A6 5C 1F B7 4A 41 02 (l:12)(169121)
 
 	if (cnl >  dDef.cnlNbr) return;														// channel out of range, do nothing
 
-	pevt.cdpIdx = cnlDefPeerIdx(cnl);													// get the index number in cnlDefType
-	if (pevt.cdpIdx == 0xff) return;
+	//pevt.cdpIdx = cnlDefPeerIdx(cnl);													// get the index number in cnlDefType
+	//if (pevt.cdpIdx == 0xff) return;
+	pevt.t = cnlDefbyPeer(cnl);															// get the index number in cnlDefType
+	if (pevt.t == NULL) return;
 	pevt.msgCnt = dParm.cnlCnt[cnl];
 
 	if (longPress == 1) pevt.reqACK = 0;												// repeated messages do not need an ACK
-	else pevt.reqACK = 0x20; 
+	else pevt.reqACK = 0x20;
 
 	pevt.type = 0x40;																	// we want to send an remote event
 
@@ -341,6 +337,33 @@ void     HM::sendPeerREMOTE(uint8_t cnl, uint8_t longPress, uint8_t lowBat) {
 	pevt.data[1] = dParm.cnlCnt[cnl]++;													// increase event counter, important for switch event
 	pevt.len = 2;																		// 2 bytes payload
 
+	pevt.act = 1;																		// active, 1 = yes, 0 = no
+	//Serial << "remote; cdpIdx:" << pevt.cdpIdx << ", type:" << pHexB(pevt.type) << ", rACK:" << pHexB(pevt.reqACK) << ", msgCnt:" << pevt.msgCnt << ", data:" << pHex(pevt.data,pevt.len) << '\n';
+}
+void     HM::sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum) {
+	// "70"          => { txt => "WeatherEvent", params => {
+	//	TEMP     => '00,4,$val=((hex($val)&0x3FFF)/10)*((hex($val)&0x4000)?-1:1)',
+	//	HUM      => '04,2,$val=(hex($val))', } },
+
+	//              type  source     target     temp    hum
+	// l> 0C 0A B4  70    1F A6 5C   1F B7 4A   01 01   01 (l:13)(160188)
+	// l> 0B 0B B4  40    1F A6 5C   1F B7 4A 41 02 (l:12)(169121)
+
+	if (cnl >  dDef.cnlNbr) return;														// channel out of range, do nothing
+
+	pevt.t = cnlDefbyPeer(cnl);															// get the index number in cnlDefType
+	if (pevt.t == NULL) return;
+	//Serial << "se\n";
+	
+	pevt.type = 0x70;																	// we want to send a weather event
+	pevt.reqACK = 0x20;																	// we like to get an ACK
+
+	pevt.data[0] = (temp >> 8) & 0xFF;
+	pevt.data[1] = temp & 0xFF;
+	pevt.data[2] = hum;
+	pevt.len = 3;																		// 2 bytes payload
+	pevt.msgCnt++;
+	
 	pevt.act = 1;																		// active, 1 = yes, 0 = no
 	//Serial << "remote; cdpIdx:" << pevt.cdpIdx << ", type:" << pHexB(pevt.type) << ", rACK:" << pHexB(pevt.reqACK) << ", msgCnt:" << pevt.msgCnt << ", data:" << pHex(pevt.data,pevt.len) << '\n';
 }
@@ -427,8 +450,8 @@ void     HM::recv_poll(void) {															// handles the receive objects
 		recv.mCnt = recv_rCnt;
 	}
 
-	// decide where to jump in
-	if((recv.forUs) && (recv_isMsg) && (recv_msgTp == 0x01)) {							// message is a config message
+	// configuration message handling
+	if ((recv.forUs) && (recv_isMsg) && (recv_msgTp == 0x01)) {							// message is a config message
 		if      (recv_by11 == 0x01) recv_ConfigPeerAdd();								// 01, 01
 		else if (recv_by11 == 0x02) recv_ConfigPeerRemove();							// 01, 02
 		else if (recv_by11 == 0x03) recv_ConfigPeerListReq();							// 01, 03
@@ -439,13 +462,14 @@ void     HM::recv_poll(void) {															// handles the receive objects
 		else if (recv_by11 == 0x09) recv_ConfigSerialReq();								// 01, 09
 		else if (recv_by11 == 0x0A) recv_Pair_Serial();									// 01, 0A
 		else if (recv_by11 == 0x0E) recv_ConfigStatusReq();								// 01, 0E
+
 		#if defined(AS_DBG)																// some debug message
 		else Serial << F("\nUNKNOWN MESSAGE, PLEASE REPORT!\n\n");
 		#endif
 	}
 	
 	// l> 0A 73 80 02 63 19 63 2F B7 4A 00
-	if((recv.forUs) && (recv_isMsg) && (recv_msgTp == 0x02)) {							// message seems to be an ACK
+	if ((recv.forUs) && (recv_isMsg) && (recv_msgTp == 0x02)) {							// message seems to be an ACK
 		send.counter = 0;
 
 		if (pevt.act == 1) {
@@ -455,11 +479,13 @@ void     HM::recv_poll(void) {															// handles the receive objects
 		}
 	}
 		
-	if((recv.forUs) && (recv_isMsg) && (recv_msgTp == 0x11)) {
+	// pair event handling
+	if ((recv.forUs) && (recv_isMsg) && (recv_msgTp == 0x11)) {
 		recv_PairEvent();
 	}
 
-	if((recv.forUs) && (recv_isMsg) && (recv_msgTp >= 0x12)) {
+	// peer event handling
+	if ((recv.forUs) && (recv_isMsg) && (recv_msgTp >= 0x12)) {
 		recv_PeerEvent();
 	}
 	
@@ -564,23 +590,23 @@ void     HM::send_peer_poll(void) {
 	// step through the peers and send the message
 	// if we didn't found a peer to send to, then send status to master
 
-	static uint8_t pPtr = 0, cdpIdx_L, msgCnt_L, statSend;
-	static const s_cnlDefType *t;
+	static uint8_t pPtr = 0, msgCnt_L, statSend;
+	static s_cnlDefType *t, *tL;
 	
 	if (send.counter > 0) return;														// something is in the send queue, lets wait for the next free slot
 
 	// first time run detection
-	if ((cdpIdx_L == pevt.cdpIdx) && (msgCnt_L == pevt.msgCnt)) {						// nothing changed
+	if ((tL == pevt.t) && (msgCnt_L == pevt.msgCnt)) {									// nothing changed
 		if ((statSend == 1) && (pPtr >= _pgmB(&t->pMax))) {								// check if we are through
 			pevt.act = 0;																// no need to jump in again
 			return;
 		}
 	} else {																			// start again
-		cdpIdx_L = pevt.cdpIdx;															// remember for next time
+		tL = pevt.t;																	// remember for next time
 		msgCnt_L = pevt.msgCnt;
 		pPtr = 0;																		// set peer pointer to start
 		statSend = 0;																	// if loop is on end and statSend is 0 then we have to send to master
-		t  = &dDef.chPtr[pevt.cdpIdx];													// some shorthand
+		t  = pevt.t;																	// some shorthand
 	}
 	
 	// check if peer pointer is through and status to master must be send - return if done
@@ -1114,6 +1140,7 @@ uint8_t  HM::isPeerKnown(uint8_t *peer) {
 	return 0;																			// nothing found
 }
 uint8_t  HM::isPairKnown(uint8_t *pair) {
+	//Serial << "x:" << pHex(dParm.MAID,3) << " y:" << pHex(pair,3) << '\n';
 	if (memcmp(dParm.MAID, bCast, 3) == 0) return 1;									// return 1 while not paired
 	
 	if (memcmp(dParm.MAID, pair, 3) == 0) return 1;										// check against regDev
@@ -1171,22 +1198,22 @@ uint8_t  HM::valPeerFromMsg(uint8_t *peer) {
 }
 uint8_t  HM::getPeerForMsg(uint8_t cnl, uint8_t *buf) {
 	static uint8_t idx_L = 0xff, ptr;
+	static s_cnlDefType *tL;
 
-	uint8_t idx = cnlDefPeerIdx(cnl);													// get the index number in cnlDefType
+	//uint8_t idx = cnlDefPeerIdx(cnl);													// get the index number in cnlDefType
+	s_cnlDefType *t = cnlDefbyPeer(cnl);												// get the index number in cnlDefType
 
-	if (idx_L != idx) {																	// check for first time
+ 	if (tL != t) {																		// check for first time
 		ptr = 0;																		// set the pointer to 0
-		idx_L = idx;																	// remember for next call check
+		tL = t;																			// remember for next call check
 		
 	} else {																			// next time detected
 		if (ptr == 0xff) {																// we are completely through
-			idx_L = 0xff;
+			tL = NULL;
 			return 0;	
 		}
 	}
 	
-	const s_cnlDefType *t  = &dDef.chPtr[idx];											// pointer for easier handling
-
 	uint8_t cnt = 0;																	// size a counter and a long peer store
 	uint32_t peerL;
 
@@ -1231,11 +1258,12 @@ uint8_t  HM::getListForMsg2(uint8_t cnl, uint8_t lst, uint8_t *peer, uint8_t *bu
 		}
 	}
 	
-	const s_cnlDefType *t  = &dDef.chPtr[cnlDefTypeIdx(cnl, lst)];						// pointer for easier handling
+	s_cnlDefType *t = cnlDefbyList(cnl, lst);
+	if (t == NULL) return 0;
+
 	uint8_t  slcAddr = _pgmB(&t->sIdx);													// get the respective addresses
 	uint16_t regAddr = cnlDefTypeAddr(cnl, lst, pIdx);
 
-	
 	uint8_t cnt = 0;																	// step through the bytes and generate message
 	while ((ptr < _pgmB(&t->sLen)) && (cnt < maxPayload)) {								// loop until buffer is full or end of table is reached
 		memcpy(&buf[cnt++], &dDef.slPtr[slcAddr + ptr], 1);								// copy one byte from sliceStr
@@ -1256,7 +1284,10 @@ uint8_t  HM::setListFromMsg(uint8_t cnl, uint8_t lst, uint8_t *peer, uint8_t len
 	uint8_t pIdx = getIdxByPeer(cnl, peer);												// get the index of the respective peer
 	if (pIdx == 0xff) return 0xff;														// peer does not exist
 	
-	const s_cnlDefType *t  = &dDef.chPtr[cnlDefTypeIdx(cnl, lst)];						// pointer for easier handling
+	s_cnlDefType *t = cnlDefbyList(cnl, lst);
+	if (t == NULL) return 0;
+
+	
 	uint8_t  slcAddr = _pgmB(&t->sIdx);													// get the respective addresses
 	uint16_t regAddr = cnlDefTypeAddr(cnl, lst, pIdx);
 
@@ -1272,18 +1303,19 @@ uint8_t  HM::setListFromMsg(uint8_t cnl, uint8_t lst, uint8_t *peer, uint8_t len
 }
 uint8_t  HM::getRegAddr(uint8_t cnl, uint8_t lst, uint8_t pIdx, uint8_t addr, uint8_t len, uint8_t *buf) {
 
-		const s_cnlDefType *t  = &dDef.chPtr[cnlDefTypeIdx(cnl, lst)];					// pointer for easier handling
-		uint16_t regAddr = cnlDefTypeAddr(cnl, lst, pIdx);								// get the base address in eeprom
+	s_cnlDefType *t = cnlDefbyList(cnl, lst);
+	if (t == NULL) return 0;
+
+	void *x = memchr(&dDef.slPtr[_pgmB(&t->sIdx)], addr, _pgmB(&t->sLen));				// search for the reg byte in slice string
+	if ((uint16_t)x == 0) return 0;														// if not found return 0
+	uint8_t xIdx = (uint8_t)((uint16_t)x - (uint16_t)&dDef.slPtr[_pgmB(&t->sIdx)]);				// calculate the base address
 		
-		void *x = memchr(&dDef.slPtr[_pgmB(&t->sIdx)], addr, _pgmB(&t->sLen));			// search for the reg byte in slice string
-		if ((uint16_t)x == 0) return 0;													// if not found return 0
-		pIdx = (uint8_t)((uint16_t)x - (uint16_t)&dDef.slPtr[_pgmB(&t->sIdx)]);			// calculate the base address
-		
-		getEeBl(regAddr+pIdx,len,buf);													// get the respective block from eeprom
-		return 1;																		// we are successfully
+	uint16_t regAddr = cnlDefTypeAddr(cnl, lst, pIdx);									// get the base address in eeprom
+	getEeBl(regAddr+xIdx,len,buf);														// get the respective block from eeprom
+	return 1;																			// we are successfully
 }
 uint8_t  HM::doesListExist(uint8_t cnl, uint8_t lst) {
-	if (cnlDefTypeIdx(cnl,lst) == 0xff) return 0;
+	if (cnlDefbyList(cnl,lst) == NULL) return 0;
 	else return 1;
 }
 void     HM::getList3ByPeer(uint8_t cnl, uint8_t *peer) {
@@ -1291,12 +1323,11 @@ void     HM::getList3ByPeer(uint8_t cnl, uint8_t *peer) {
 	uint8_t pIdx = getIdxByPeer(cnl, peer);												// get the index of the respective peer
 	if (pIdx == 0xff) return;															// peer does not exist
 
-	uint8_t lIdx = cnlDefTypeIdx(cnl,3);												// get the respective line in dDef.chPtr
-	if (lIdx == 0xff) return;															// list does not exist
+	s_cnlDefType *t = cnlDefbyList(cnl, 3);
+	if (t == NULL) return;
+
 
 	uint16_t addr = cnlDefTypeAddr(cnl, 3, pIdx);										// get the respective eeprom address
-	
-	const s_cnlDefType *t = &dDef.chPtr[lIdx];											// pointer for easier handling
 	getEeBl(addr, _pgmB(&t->sLen), (void*)_pgmW(&t->pRegs));							// load content from eeprom
 	
 	#if defined(SM_DBG)																	// some debug message
@@ -1304,8 +1335,9 @@ void     HM::getList3ByPeer(uint8_t cnl, uint8_t *peer) {
 	#endif
 }
 void     HM::setListFromModule(uint8_t cnl, uint8_t peerIdx, uint8_t *data, uint8_t len) {
-	uint8_t idx = cnlDefPeerIdx(cnl);
-	uint16_t addr = cnlDefTypeAddr(cnl, _pgmB(&dDef.chPtr[idx].lst),peerIdx);
+	s_cnlDefType *t = cnlDefbyPeer(cnl);
+	
+	uint16_t addr = cnlDefTypeAddr(cnl, _pgmB(&t->lst),peerIdx);
 	if (addr == 0x00) return;
 	setEeBl(addr, len, data);	
 }
@@ -1324,10 +1356,10 @@ uint8_t  HM::getCnlByPeer(uint8_t *peer) {
 uint8_t  HM::getIdxByPeer(uint8_t cnl, uint8_t *peer) {
 	if (cnl == 0) return 0;																// channel 0 does not provide any peers
 
-	uint8_t x = cnlDefPeerIdx(cnl);														// get the respective index in the list
-	if (x == 0xff) return x;															// nothing found, return
+	s_cnlDefType *t = cnlDefbyPeer(cnl);
+	if (t == NULL) return 0xff;
 	
-	for (uint8_t i = 0; i < _pgmB(&dDef.chPtr[x].pMax); i++) {							// step through the peers
+	for (uint8_t i = 0; i < _pgmB(&t->pMax); i++) {										// step through the peers
 		if (getEeLo(cnlDefPeerAddr(cnl,i)) == *(uint32_t*)peer) return i;				// load peer from eeprom and compare
 	}
 	return 0xff;																		// out of range
@@ -1339,21 +1371,21 @@ uint8_t  HM::getPeerByIdx(uint8_t cnl, uint8_t idx, uint8_t *peer) {
 	return 1;																			// done
 }
 uint8_t  HM::getFreePeerSlot(uint8_t cnl) {
-	uint8_t ret = cnlDefPeerIdx(cnl);													// get the index in cnlDefType
-	if (ret == 0xff) return ret;														// no index found, return
-
-	for (uint8_t i = 0; i < _pgmB(&dDef.chPtr[ret].pMax); i++) {						// step through all peers, given by pMax
+	s_cnlDefType *t = cnlDefbyPeer(cnl);
+	if (t == NULL) return 0xff;
+	
+	for (uint8_t i = 0; i < _pgmB(&t->pMax); i++) {										// step through all peers, given by pMax
 		if (getEeLo(cnlDefPeerAddr(cnl,i)) == 0) return i;								// if we found an empty block then return the number
 	}
 	return 0xff;																		// no block found
 }
 uint8_t  HM::cntFreePeerSlot(uint8_t cnl) {
-	uint8_t ret = cnlDefPeerIdx(cnl);													// get the index in cnlDefType
-	if (ret == 0xff) return ret;
 	//Serial << "idx:" << ret << ", pMax:" << _pgmB(&dDef.chPtr[ret].pMax) << '\n';
-
+	s_cnlDefType *t = cnlDefbyPeer(cnl);
+	if (t == NULL) return 0xff;
+	
 	uint8_t cnt = 0;
-	for (uint8_t i = 0; i < _pgmB(&dDef.chPtr[ret].pMax); i++) {						// step through all peers, given by pMax
+	for (uint8_t i = 0; i < _pgmB(&t->pMax); i++) {										// step through all peers, given by pMax
 		if (getEeLo(cnlDefPeerAddr(cnl,i)) == 0) cnt++;									// increase counter if slot is empty
 	}
 	return cnt;																			// return the counter
@@ -1382,42 +1414,37 @@ uint8_t  HM::remPeer(uint8_t cnl, uint8_t *peer) {
 }
 
 //- cnlDefType specific functions
-uint8_t  HM::cnlDefTypeIdx(uint8_t cnl, uint8_t lst) {
-	for (uint8_t i = 0; i < dDef.lstNbr; i++) {											// step through the list
-
-		const s_cnlDefType *t = &dDef.chPtr[i];											// pointer for easier handling
-		if ((cnl == _pgmB(&t->cnl)) && (lst == _pgmB(&t->lst))) return i;				// find the respective channel and list
-	}
-	return 0xff;																		// nothing found
-}
-uint8_t  HM::cnlDefPeerIdx(uint8_t cnl) {
-
-	for (uint8_t i = 0; i < dDef.lstNbr; i++) {											// step through the list
-
-		const s_cnlDefType *t = &dDef.chPtr[i];											// pointer for easier handling
-		if ((cnl == _pgmB(&t->cnl)) && (_pgmB(&t->pMax))) return i;						// find the respective channel which includes a peer
-
-	}
-	return 0xff;																		// nothing found
-}
 uint16_t HM::cnlDefTypeAddr(uint8_t cnl, uint8_t lst, uint8_t peerIdx) {
-	uint8_t idx = cnlDefTypeIdx(cnl, lst);												// get the line in cnlDefType
-	if (idx == 0xff) return 0;															// if not found, return 0
-
-	const s_cnlDefType *t = &dDef.chPtr[idx];											// pointer for easier handling
+	s_cnlDefType *t = cnlDefbyList(cnl, lst);
+	if (t == NULL) return 0;
+	
 	if ((peerIdx) && (peerIdx >= _pgmB(&t->pMax))) return 0;							// return if peer index is out of range
-
 	return ee[0].regsDB + _pgmW(&t->pAddr) + (peerIdx * _pgmB(&t->sLen));				// calculate the starting address
 }
 uint16_t HM::cnlDefPeerAddr(uint8_t cnl, uint8_t peerIdx) {
-	uint8_t idx = cnlDefPeerIdx(cnl);													// get the line in cnlDefType
-	if (idx == 0xff) return 0;															// if not found, return 0
+	s_cnlDefType *t = cnlDefbyPeer(cnl);
+	if (t == NULL) return 0;
 	
-	const s_cnlDefType *t = &dDef.chPtr[idx];											// pointer for easier handling
 	if ((peerIdx) && (peerIdx >= _pgmB(&t->pMax))) return 0;							// return if peer index is out of range
-
 	return ee[0].peerDB + _pgmW(&t->pPeer) + (peerIdx * 4);								// calculate the starting address
 }
+s_cnlDefType* HM::cnlDefbyList(uint8_t cnl, uint8_t lst) {
+	for (uint8_t i = 0; i < dDef.lstNbr; i++) {											// step through the list
+
+		if ((cnl == _pgmB(&dDef.chPtr[i].cnl)) && (lst == _pgmB(&dDef.chPtr[i].lst)))
+		return (s_cnlDefType*)&dDef.chPtr[i];											 // find the respective channel and list
+	}
+	return NULL;																		// nothing found
+}
+s_cnlDefType* HM::cnlDefbyPeer(uint8_t cnl) {
+	for (uint8_t i = 0; i < dDef.lstNbr; i++) {											// step through the list
+
+		if ((cnl == _pgmB(&dDef.chPtr[i].cnl)) && (_pgmB(&dDef.chPtr[i].pMax)))
+		return (s_cnlDefType*)&dDef.chPtr[i];											// find the respective channel which includes a peer
+	}
+	return NULL;																		// nothing found
+}
+
 
 //- pure eeprom handling, i2c to be implemented
 uint8_t  HM::getEeBy(uint16_t addr) {
