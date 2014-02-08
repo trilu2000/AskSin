@@ -17,7 +17,7 @@ void MyClassName::poll_measure(void) {
 	nTime += measureTime;																// add the 500ms measurement takes to transmit in time
 	nAction = 't';
 	// measurement code
-	tTemp = 1700 + hm->getMsgCnt();
+	tTemp = 170 + (hm->getMsgCnt()/10);
 	tHum = hm->getMsgCnt();
 }
 void MyClassName::poll_transmit(void) {
