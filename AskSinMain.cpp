@@ -318,6 +318,13 @@ void     HM::sendPeerREMOTE(uint8_t cnl, uint8_t longPress, uint8_t lowBat) {
 	// l> 0B 0A B4  40    1F A6 5C   1F B7 4A   01    01 (l:12)(160188)
 	// l> 0B 0B B4 40 1F A6 5C 1F B7 4A 41 02 (l:12)(169121)
 
+<<<<<<< HEAD
+=======
+	if (cnl >  dDef.cnlNbr) return;														// channel out of range, do nothing
+
+	//pevt.cdpIdx = cnlDefPeerIdx(cnl);													// get the index number in cnlDefType
+	//if (pevt.cdpIdx == 0xff) return;
+>>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 	pevt.t = cnlDefbyPeer(cnl);															// get the index number in cnlDefType
 	if (pevt.t == NULL) return;
 	pevt.msgCnt = dParm.cnlCnt[cnl];
@@ -345,8 +352,16 @@ void     HM::sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum) {
 	// l> 0C 0A B4  70    1F A6 5C   1F B7 4A   01 01   01 (l:13)(160188)
 	// l> 0B 0B B4  40    1F A6 5C   1F B7 4A 41 02 (l:12)(169121)
 
+<<<<<<< HEAD
 	pevt.t = cnlDefbyPeer(cnl);															// get the index number in cnlDefType
 	if (pevt.t == NULL) return;
+=======
+	if (cnl >  dDef.cnlNbr) return;														// channel out of range, do nothing
+
+	pevt.t = cnlDefbyPeer(cnl);															// get the index number in cnlDefType
+	if (pevt.t == NULL) return;
+	//Serial << "se\n";
+>>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 	
 	pevt.type = 0x70;																	// we want to send a weather event
 	pevt.reqACK = 0x20;																	// we like to get an ACK
@@ -1301,9 +1316,15 @@ uint8_t  HM::getRegAddr(uint8_t cnl, uint8_t lst, uint8_t pIdx, uint8_t addr, ui
 
 	void *x = memchr(&dDef.slPtr[_pgmB(&t->sIdx)], addr, _pgmB(&t->sLen));				// search for the reg byte in slice string
 	if ((uint16_t)x == 0) return 0;														// if not found return 0
+<<<<<<< HEAD
 	uint8_t xIdx = (uint8_t)((uint16_t)x - (uint16_t)&dDef.slPtr[_pgmB(&t->sIdx)]);		// calculate the base address
 		
 	uint16_t regAddr = cdListAddrByPtr(t, pIdx);										// get the base address in eeprom
+=======
+	uint8_t xIdx = (uint8_t)((uint16_t)x - (uint16_t)&dDef.slPtr[_pgmB(&t->sIdx)]);				// calculate the base address
+		
+	uint16_t regAddr = cnlDefTypeAddr(cnl, lst, pIdx);									// get the base address in eeprom
+>>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 	getEeBl(regAddr+xIdx,len,buf);														// get the respective block from eeprom
 	return 1;																			// we are successfully
 }
@@ -1318,9 +1339,15 @@ void     HM::getList3ByPeer(uint8_t cnl, uint8_t *peer) {
 
 	s_cnlDefType *t = cnlDefbyList(cnl, 3);
 	if (t == NULL) return;
+<<<<<<< HEAD
 
 
 	uint16_t addr = cdListAddrByPtr(t, pIdx);										// get the respective eeprom address
+=======
+
+
+	uint16_t addr = cnlDefTypeAddr(cnl, 3, pIdx);										// get the respective eeprom address
+>>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 	getEeBl(addr, _pgmB(&t->sLen), (void*)_pgmW(&t->pRegs));							// load content from eeprom
 	
 	#if defined(SM_DBG)																	// some debug message
@@ -1330,7 +1357,11 @@ void     HM::getList3ByPeer(uint8_t cnl, uint8_t *peer) {
 void     HM::setListFromModule(uint8_t cnl, uint8_t peerIdx, uint8_t *data, uint8_t len) {
 	s_cnlDefType *t = cnlDefbyPeer(cnl);
 	
+<<<<<<< HEAD
 	uint16_t addr = cdListAddrByPtr(t,peerIdx);
+=======
+	uint16_t addr = cnlDefTypeAddr(cnl, _pgmB(&t->lst),peerIdx);
+>>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 	if (addr == 0x00) return;
 	setEeBl(addr, len, data);	
 }
@@ -1353,7 +1384,11 @@ uint8_t  HM::getIdxByPeer(uint8_t cnl, uint8_t *peer) {
 	if (t == NULL) return 0xff;
 	
 	for (uint8_t i = 0; i < _pgmB(&t->pMax); i++) {										// step through the peers
+<<<<<<< HEAD
 		if (getEeLo(cdPeerAddrByCnlIdx(cnl,i)) == *(uint32_t*)peer) return i;			// load peer from eeprom and compare
+=======
+		if (getEeLo(cnlDefPeerAddr(cnl,i)) == *(uint32_t*)peer) return i;				// load peer from eeprom and compare
+>>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 	}
 	return 0xff;																		// out of range
 }
@@ -1368,7 +1403,11 @@ uint8_t  HM::getFreePeerSlot(uint8_t cnl) {
 	if (t == NULL) return 0xff;
 	
 	for (uint8_t i = 0; i < _pgmB(&t->pMax); i++) {										// step through all peers, given by pMax
+<<<<<<< HEAD
 		if (getEeLo(cdPeerAddrByCnlIdx(cnl,i)) == 0) return i;							// if we found an empty block then return the number
+=======
+		if (getEeLo(cnlDefPeerAddr(cnl,i)) == 0) return i;								// if we found an empty block then return the number
+>>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 	}
 	return 0xff;																		// no block found
 }
@@ -1379,7 +1418,11 @@ uint8_t  HM::cntFreePeerSlot(uint8_t cnl) {
 	
 	uint8_t cnt = 0;
 	for (uint8_t i = 0; i < _pgmB(&t->pMax); i++) {										// step through all peers, given by pMax
+<<<<<<< HEAD
 		if (getEeLo(cdPeerAddrByCnlIdx(cnl,i)) == 0) cnt++;								// increase counter if slot is empty
+=======
+		if (getEeLo(cnlDefPeerAddr(cnl,i)) == 0) cnt++;									// increase counter if slot is empty
+>>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 	}
 	return cnt;																			// return the counter
 }
@@ -1407,6 +1450,7 @@ uint8_t  HM::remPeer(uint8_t cnl, uint8_t *peer) {
 }
 
 //- cnlDefType specific functions
+<<<<<<< HEAD
 uint16_t HM::cdListAddrByCnlLst(uint8_t cnl, uint8_t lst, uint8_t peerIdx) {
 	s_cnlDefType *t = cnlDefbyList(cnl, lst);
 	return cdListAddrByPtr(t, peerIdx);
@@ -1424,12 +1468,33 @@ s_cnlDefType* HM::cnlDefbyList(uint8_t cnl, uint8_t lst) {
 }
 
 uint16_t HM::cdPeerAddrByCnlIdx(uint8_t cnl, uint8_t peerIdx) {
+=======
+uint16_t HM::cnlDefTypeAddr(uint8_t cnl, uint8_t lst, uint8_t peerIdx) {
+	s_cnlDefType *t = cnlDefbyList(cnl, lst);
+	if (t == NULL) return 0;
+	
+	if ((peerIdx) && (peerIdx >= _pgmB(&t->pMax))) return 0;							// return if peer index is out of range
+	return ee[0].regsDB + _pgmW(&t->pAddr) + (peerIdx * _pgmB(&t->sLen));				// calculate the starting address
+}
+uint16_t HM::cnlDefPeerAddr(uint8_t cnl, uint8_t peerIdx) {
+>>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 	s_cnlDefType *t = cnlDefbyPeer(cnl);
 	if (t == NULL) return 0;
 	
 	if ((peerIdx) && (peerIdx >= _pgmB(&t->pMax))) return 0;							// return if peer index is out of range
 	return ee[0].peerDB + _pgmW(&t->pPeer) + (peerIdx * 4);								// calculate the starting address
 }
+<<<<<<< HEAD
+=======
+s_cnlDefType* HM::cnlDefbyList(uint8_t cnl, uint8_t lst) {
+	for (uint8_t i = 0; i < dDef.lstNbr; i++) {											// step through the list
+
+		if ((cnl == _pgmB(&dDef.chPtr[i].cnl)) && (lst == _pgmB(&dDef.chPtr[i].lst)))
+		return (s_cnlDefType*)&dDef.chPtr[i];											 // find the respective channel and list
+	}
+	return NULL;																		// nothing found
+}
+>>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 s_cnlDefType* HM::cnlDefbyPeer(uint8_t cnl) {
 	for (uint8_t i = 0; i < dDef.lstNbr; i++) {											// step through the list
 
@@ -1438,6 +1503,10 @@ s_cnlDefType* HM::cnlDefbyPeer(uint8_t cnl) {
 	}
 	return NULL;																		// nothing found
 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 
 //- pure eeprom handling, i2c to be implemented
 uint8_t  HM::getEeBy(uint16_t addr) {

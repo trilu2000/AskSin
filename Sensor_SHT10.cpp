@@ -7,6 +7,7 @@
 #include "Sensor_SHT10.h"
 
 //- user code here --------------------------------------------------------------------------------------------------------
+<<<<<<< HEAD
 void MyClassName::config(uint8_t data, uint8_t sck, uint16_t timing) {
 	tTiming = timing;
 	nTime = millis() + 1000;															// set the first time we like to measure
@@ -14,11 +15,18 @@ void MyClassName::config(uint8_t data, uint8_t sck, uint16_t timing) {
 
 	sens.config(7,9);																	// configure the sensor
 	sens.writeSR(LOW_RES);																// low resolution is enough
+=======
+void MyClassName::config(uint16_t timing) {
+	tTiming = timing;
+	nTime = millis() + 1000;															// set the first time we like to measure
+	nAction = 'm';
+>>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 }
 
 void MyClassName::poll_measure(void) {
 	nTime += measureTime;																// add the 500ms measurement takes to transmit in time
 	nAction = 't';
+<<<<<<< HEAD
 
 	// measurement code
 	// http://www.sensirion.com/fileadmin/user_upload/customers/sensirion/Dokumente/Humidity/Sensirion_Humidity_SHT1x_Datasheet_V5.pdf
@@ -34,12 +42,21 @@ void MyClassName::poll_measure(void) {
 	tHum = ((float)tTemp/10 - 25) * (float)(0.01f + 0.00128f * rawData) + tHum;
 	//Serial << "raw: " << rawData << "  mH: " << tHum << '\n';
 	
+=======
+	// measurement code
+	tTemp = 170 + (hm->getMsgCnt()/10);
+	tHum = hm->getMsgCnt();
+>>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 }
 void MyClassName::poll_transmit(void) {
 	if (tTiming) nTime = millis() + tTiming;											// there is a given timing
 	else nTime = millis() + (calcSendSlot() * 250) - measureTime;						// calculate the next send slot by multiplying with 250ms to get the time in millis
 	
+<<<<<<< HEAD
 	//Serial << "x:" << nTime << '\n';
+=======
+	Serial << "x:" << nTime << '\n';
+>>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 	nAction = 'm';																		// next time we want to measure again
 	// transmit code
 	hm->sendPeerWEATHER(regCnl,tTemp,tHum);												// send out the weather event
@@ -90,7 +107,11 @@ void MyClassName::peerMsgEvent(uint8_t type, uint8_t *data, uint8_t len) {
 void MyClassName::poll(void) {
 	// just polling, as the function name said
 	if ((nTime == 0) || (nTime > millis())) return;										// check if it is time to jump in
+<<<<<<< HEAD
 	//Serial << "n: " << nAction << "  t: " << nTime << '\n'; 
+=======
+	Serial << "n: " << nAction << "  t: " << nTime << '\n'; 
+>>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 	if      (nAction == 'm') poll_measure();											// measure
 	else if (nAction == 't') poll_transmit();											// transmit
 }
@@ -132,4 +153,7 @@ void MyClassName::peerAddEvent(uint8_t *data, uint8_t len) {
 	}
 	
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
