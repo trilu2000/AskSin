@@ -262,17 +262,12 @@ class HM {
 	uint8_t  remPeer(uint8_t cnl, uint8_t *peer);										// Ok, remove a peer from peer database
 
 	//- cnlDefType specific functions
-<<<<<<< HEAD
+	//- cnlDefType specific functions
 	uint16_t cdListAddrByCnlLst(uint8_t cnl, uint8_t lst, uint8_t peerIdx);				// Ok, get the eeprom address of register database by index and peerIdx
 	uint16_t cdListAddrByPtr(s_cnlDefType *ptr, uint8_t peerIdx);
 	s_cnlDefType* cnlDefbyList(uint8_t cnl, uint8_t lst);
 
 	uint16_t cdPeerAddrByCnlIdx(uint8_t cnl, uint8_t peerIdx);								// Ok, get the eeprom address of peers database by index and peerIdx
-=======
-	uint16_t cnlDefTypeAddr(uint8_t cnl, uint8_t lst, uint8_t peerIdx);					// Ok, get the eeprom address of register database by index and peerIdx
-	uint16_t cnlDefPeerAddr(uint8_t cnl, uint8_t peerIdx);								// Ok, get the eeprom address of peers database by index and peerIdx
-	s_cnlDefType* cnlDefbyList(uint8_t cnl, uint8_t lst);
->>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 	s_cnlDefType* cnlDefbyPeer(uint8_t cnl);
 
 	//- pure eeprom handling, i2c to be implemented

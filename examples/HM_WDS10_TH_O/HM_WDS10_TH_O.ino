@@ -2,11 +2,6 @@
 #include "Register.h"																	// configuration sheet
 #include <Buttons.h>																	// remote buttons library
 #include <Sensor_SHT10.h>
-<<<<<<< HEAD
-=======
-#include <Sensirion.h>
->>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
-
 
 //- serial communication --------------------------------------------------------------------------------------------------
 const uint8_t helptext1[] PROGMEM = {													// help text for serial console
@@ -41,13 +36,7 @@ HM::s_jumptable jTbl[] = {																// jump table for HM communication
 	{ 0x00 }
 };
 Buttons button[1];																		// declare remote button object
-<<<<<<< HEAD
-Sensor_SHT10 sht10;																		// declare the sensor class
-=======
 Sensor_SHT10 sht10;
-
-Sensirion sht = Sensirion(8, 7);
->>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 
 
 //- main functions --------------------------------------------------------------------------------------------------------
@@ -71,13 +60,8 @@ void setup() {
 	button[0].regInHM(0,&hm);															// register buttons in HM per channel, handover HM class pointer
 	button[0].config(8, NULL);															// configure button on specific pin and handover a function pointer to the main sketch
 
-<<<<<<< HEAD
 	sht10.regInHM(1,&hm);																// register sensor class in hm
 	sht10.config(7,9,0);																// data pin, clock pin and timing - 0 means HM calculated timing, every number above will taken in milliseconds
-=======
-	sht10.regInHM(1,&hm);
-	sht10.config(0);
->>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 	
 	Serial << "\npair: " << pHex(regs.ch0.l0.pairCentral,3) << '\n';	
 }

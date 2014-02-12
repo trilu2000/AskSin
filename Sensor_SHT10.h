@@ -16,11 +16,7 @@
 #include "AskSinMain.h"
 #include "utility/Serial.h"
 #include "utility/Fastdelegate.h"
-<<<<<<< HEAD
 #include "utility/Sensirion.h"
-
-=======
->>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 
 #define MyClassName Sensor_SHT10														// module name as macro to overcome the problem of renaming functions all the time
 #define DM_DBG																			// debug message flag
@@ -32,7 +28,6 @@ const uint8_t peerSingle[] = {};
 class MyClassName {
   //- user code here ------------------------------------------------------------------------------------------------------
   public://----------------------------------------------------------------------------------------------------------------
-<<<<<<< HEAD
 	Sensirion sens;
 
 	void config(uint8_t data, uint8_t sck, uint16_t timing);
@@ -41,14 +36,6 @@ class MyClassName {
   protected://-------------------------------------------------------------------------------------------------------------
   private://---------------------------------------------------------------------------------------------------------------
 	#define  measureTime   1000
-=======
-
-	void config(uint16_t timing);
-	
-  protected://-------------------------------------------------------------------------------------------------------------
-  private://---------------------------------------------------------------------------------------------------------------
-	#define  measureTime   500
->>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 
 	uint8_t  nAction;
 	uint32_t nTime;
@@ -56,11 +43,7 @@ class MyClassName {
 	
 	uint16_t tTemp;
 	uint8_t  tHum;
-<<<<<<< HEAD
-	
-=======
 
->>>>>>> a854fc8c2a80f13cbadaeacd15bed3b0dc2cdea3
 	uint32_t calcSendSlot(void);
 	void     poll_measure(void);
 	void     poll_transmit(void);
