@@ -152,12 +152,15 @@ class HM {
 	void     loadDefaults(void);														// Ok, load defaults for regs or peer to eeprom
 	void     loadRegs(void);															// Ok, load regs table from eeprom
 	void     regCnlModule(uint8_t cnl, s_mod_dlgt Delegate, uint16_t *mainList, uint16_t *peerList); // register a module to specific channel
+	uint32_t getHMID(void);
+	uint8_t  getMsgCnt(void);
 
 	//- external functions for pairing and communicating with the module
 	void     startPairing(void);														// , start pairing with master
 	void     sendInfoActuatorStatus(uint8_t cnl, uint8_t status, uint8_t flag);			// , send status function
 	void     sendACKStatus(uint8_t cnl, uint8_t status, uint8_t douolo);				// , send ACK with status
 	void     sendPeerREMOTE(uint8_t button, uint8_t longPress, uint8_t lowBat);			// (0x40) send REMOTE event to all peers
+	void     sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum);					// (0x70) send WEATHER event
 	void     sendPeerRAW(uint8_t cnl, uint8_t type, uint8_t *data, uint8_t len);		// send event to all peers listed in the peers database by channel, type specifies the type of the message, data and len delivers the content of the event
 	void     send_ACK(void);															// , ACK sending function
 	void     send_NACK(void);															// , NACK sending function
@@ -180,7 +183,7 @@ class HM {
 		uint8_t type;																	// message type, 0x40 for remote
 		uint8_t data[20];																// data to send
 		uint8_t len;																	// len of data to send
-		uint8_t cdpIdx;																	// channel def peer index
+		s_cnlDefType *t;																// pointer to channel line
 		uint8_t msgCnt;																	// message counter, when already active we can recognize that a new job in the same channel index has happens
 		uint8_t act;																	// active, 1 = yes, 0 = no
 	} pevt;
@@ -228,7 +231,7 @@ class HM {
 	uint8_t  module_Jump(uint8_t by3, uint8_t by10, uint8_t by11, uint8_t cnl, uint8_t *data, uint8_t len);
 	
 	//- internal send functions
-	void send_prep(uint8_t msgCnt, uint8_t comBits, uint8_t msgType, uint8_t *targetID, uint8_t *payLoad, uint8_t payLen);
+	void     send_prep(uint8_t msgCnt, uint8_t comBits, uint8_t msgType, uint8_t *targetID, uint8_t *payLoad, uint8_t payLen);
 
 	//- to check incoming messages if sender is known
 	uint8_t  isPeerKnown(uint8_t *peer);												// , check 3 byte peer against peer database, return 1 if found, otherwise 0
@@ -259,11 +262,13 @@ class HM {
 	uint8_t  remPeer(uint8_t cnl, uint8_t *peer);										// Ok, remove a peer from peer database
 
 	//- cnlDefType specific functions
-	uint8_t  cnlDefTypeIdx(uint8_t cnl, uint8_t lst);									// Ok, get the line number of devDef by cnl and lst
-	uint8_t  cnlDefPeerIdx(uint8_t cnl);												// Ok, get the line number of devDef which is valid for a peer
-	uint16_t cnlDefTypeAddr(uint8_t cnl, uint8_t lst, uint8_t peerIdx);					// Ok, get the eeprom address of register database by index and peerIdx
-	uint16_t cnlDefPeerAddr(uint8_t cnl, uint8_t peerIdx);								// Ok, get the eeprom address of peers database by index and peerIdx
-	
+	uint16_t cdListAddrByCnlLst(uint8_t cnl, uint8_t lst, uint8_t peerIdx);				// Ok, get the eeprom address of register database by index and peerIdx
+	uint16_t cdListAddrByPtr(s_cnlDefType *ptr, uint8_t peerIdx);
+	s_cnlDefType* cnlDefbyList(uint8_t cnl, uint8_t lst);
+
+	uint16_t cdPeerAddrByCnlIdx(uint8_t cnl, uint8_t peerIdx);								// Ok, get the eeprom address of peers database by index and peerIdx
+	s_cnlDefType* cnlDefbyPeer(uint8_t cnl);
+
 	//- pure eeprom handling, i2c to be implemented
 	uint8_t  getEeBy(uint16_t addr);
 	void     setEeBy(uint16_t addr, uint8_t payload);
