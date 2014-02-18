@@ -131,14 +131,6 @@ InputParser& InputParser::operator >> (const char*& v) {
 }
 
 //- serial print functions
-char pHexEE(uint16_t addr, uint8_t len) {
-	//Serial << "x:" << addr << '\n';
-	for (uint8_t i=0; i<len; i++) {
-		Serial << pHexB(eeprom_read_byte((uint8_t*)addr++)) << ' ';
-		//if(i+1 < len) Serial << ' ';
-	}
-	return 0;
-}
 char pCharPGM(const uint8_t *buf) {
 	char c;
 	while (( c = pgm_read_byte(buf++)) != 0) Serial << c;
