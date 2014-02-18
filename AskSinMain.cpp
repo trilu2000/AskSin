@@ -120,14 +120,9 @@ void     HM::setPowerMode(uint8_t mode) {
 		WDTCSR = 1<<WDP2;																// 250 ms
 		//WDTCSR = 1<<WDP1 | 1<<WDP2;													// 1000 ms
 		//WDTCSR = 1<<WDP0 | 1<<WDP1 | 1<<WDP2;											// 2000 ms
-<<<<<<< HEAD
 		//WDTCSR = 1<<WDP0 | 1<<WDP3;														// 8000 ms
 		powr.wdTme = 250;																// store the watch dog time for adding in the poll function
 		//powr.wdTme = 8190;																// store the watch dog time for adding in the poll function
-=======
-		WDTCSR = 1<<WDP0 | 1<<WDP3;														// 8000 ms
-		powr.wdTme = 8190;																// store the watch dog time for adding in the poll function
->>>>>>> f8c4d40e146a34f1c0f9bd1ab054ffbeefc76974
 	}
 	
 	if ((mode == 3) || (mode == 4))	{													// most power savings, RX is off beside a special function where RX stay in receive for 30 sec
@@ -271,16 +266,12 @@ void     HM::regCnlModule(uint8_t cnl, s_mod_dlgt Delegate, uint16_t *mainList, 
 
 }
 uint32_t HM::getHMID(void) {
-<<<<<<< HEAD
 	uint8_t a[3];
 	a[0] = dParm.HMID[2];
 	a[1] = dParm.HMID[1];
 	a[2] = dParm.HMID[0];
 	a[3] = 0;
 	return *(uint32_t*)&a;
-=======
-	return (uint32_t)dParm.HMID[0] << 16 | (uint16_t)dParm.HMID[1] << 8 | (uint8_t)dParm.HMID[2];
->>>>>>> f8c4d40e146a34f1c0f9bd1ab054ffbeefc76974
 }
 uint8_t  HM::getMsgCnt(void) {
 	return send.mCnt - 1;
@@ -366,11 +357,7 @@ void     HM::sendPeerREMOTE(uint8_t cnl, uint8_t longPress, uint8_t lowBat) {
 	pevt.act = 1;																		// active, 1 = yes, 0 = no
 	//Serial << "remote; cdpIdx:" << pevt.cdpIdx << ", type:" << pHexB(pevt.type) << ", rACK:" << pHexB(pevt.reqACK) << ", msgCnt:" << pevt.msgCnt << ", data:" << pHex(pevt.data,pevt.len) << '\n';
 }
-<<<<<<< HEAD
 void     HM::sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum, uint16_t pres) {
-=======
-void     HM::sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum) {
->>>>>>> f8c4d40e146a34f1c0f9bd1ab054ffbeefc76974
 	// "70"          => { txt => "WeatherEvent", params => {
 	//	TEMP     => '00,4,$val=((hex($val)&0x3FFF)/10)*((hex($val)&0x4000)?-1:1)',
 	//	HUM      => '04,2,$val=(hex($val))', } },
@@ -386,7 +373,6 @@ void     HM::sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum) {
 	pevt.type = 0x70;																	// we want to send a weather event
 	pevt.reqACK = 0x20;																	// we like to get an ACK
 
-<<<<<<< HEAD
 	pevt.data[0] = (temp >> 8) & 0xFF | battery.state << 7;
 	pevt.data[1] = temp & 0xFF;
 	pevt.data[2] = hum;
@@ -396,12 +382,6 @@ void     HM::sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum) {
 	if (pres) pevt.len = 5;																// 5 bytes payload with pressure
 	else pevt.len = 3;																	// if pressure is empty, then we have only3 bytes
 	
-=======
-	pevt.data[0] = (temp >> 8) & 0xFF;
-	pevt.data[1] = temp & 0xFF;
-	pevt.data[2] = hum;
-	pevt.len = 3;																		// 2 bytes payload
->>>>>>> f8c4d40e146a34f1c0f9bd1ab054ffbeefc76974
 	pevt.msgCnt++;
 	
 	pevt.act = 1;																		// active, 1 = yes, 0 = no
@@ -490,7 +470,6 @@ void     HM::recv_poll(void) {															// handles the receive objects
 		recv.mCnt = recv_rCnt;
 	}
 
-<<<<<<< HEAD
 	
 	if ((recv.forUs) && (recv_isMsg)) {													// message is a config message
 		if (recv_msgTp == 0x01) {														// configuration message handling
@@ -498,29 +477,6 @@ void     HM::recv_poll(void) {															// handles the receive objects
 		
 		} else if (recv_msgTp == 0x02) {												// message seems to be an ACK
 			send.counter = 0;
-=======
-	// configuration message handling
-	if ((recv.forUs) && (recv_isMsg) && (recv_msgTp == 0x01)) {							// message is a config message
-		if      (recv_by11 == 0x01) recv_ConfigPeerAdd();								// 01, 01
-		else if (recv_by11 == 0x02) recv_ConfigPeerRemove();							// 01, 02
-		else if (recv_by11 == 0x03) recv_ConfigPeerListReq();							// 01, 03
-		else if (recv_by11 == 0x04) recv_ConfigParamReq();								// 01, 04
-		else if (recv_by11 == 0x05) recv_ConfigStart();									// 01, 05
-		else if (recv_by11 == 0x06) recv_ConfigEnd();									// 01, 06
-		else if (recv_by11 == 0x08) recv_ConfigWriteIndex();							// 01, 08
-		else if (recv_by11 == 0x09) recv_ConfigSerialReq();								// 01, 09
-		else if (recv_by11 == 0x0A) recv_Pair_Serial();									// 01, 0A
-		else if (recv_by11 == 0x0E) recv_ConfigStatusReq();								// 01, 0E
-
-		#if defined(AS_DBG)																// some debug message
-		else Serial << F("\nUNKNOWN MESSAGE, PLEASE REPORT!\n\n");
-		#endif
-	}
-	
-	// l> 0A 73 80 02 63 19 63 2F B7 4A 00
-	if ((recv.forUs) && (recv_isMsg) && (recv_msgTp == 0x02)) {							// message seems to be an ACK
-		send.counter = 0;
->>>>>>> f8c4d40e146a34f1c0f9bd1ab054ffbeefc76974
 
 			if (pevt.act == 1) {
 				// we got an ACK after key press?
@@ -535,23 +491,10 @@ void     HM::recv_poll(void) {															// handles the receive objects
 			recv_PeerEvent();
 			
 		}
-<<<<<<< HEAD
 
 		#if defined(AS_DBG)																// some debug message
 		else Serial << F("\nUNKNOWN MESSAGE, PLEASE REPORT!\n\n");
 		#endif
-=======
-	}
-		
-	// pair event handling
-	if ((recv.forUs) && (recv_isMsg) && (recv_msgTp == 0x11)) {
-		recv_PairEvent();
-	}
-
-	// peer event handling
-	if ((recv.forUs) && (recv_isMsg) && (recv_msgTp >= 0x12)) {
-		recv_PeerEvent();
->>>>>>> f8c4d40e146a34f1c0f9bd1ab054ffbeefc76974
 	}
 	
 	if (recv.forUs) main_Jump();														// does main sketch want's to be informed?
@@ -1267,10 +1210,6 @@ uint8_t  HM::getPeerForMsg(uint8_t cnl, uint8_t *buf) {
 	static uint8_t idx_L = 0xff, ptr;
 	static s_cnlDefType *tL;
 
-<<<<<<< HEAD
-=======
-	//uint8_t idx = cnlDefPeerIdx(cnl);													// get the index number in cnlDefType
->>>>>>> f8c4d40e146a34f1c0f9bd1ab054ffbeefc76974
 	s_cnlDefType *t = cnlDefbyPeer(cnl);												// get the index number in cnlDefType
 
  	if (tL != t) {																		// check for first time
@@ -1390,19 +1329,11 @@ uint8_t  HM::doesListExist(uint8_t cnl, uint8_t lst) {
 }
 void     HM::getCnlListByPeerIdx(uint8_t cnl, uint8_t peerIdx) {
 
-<<<<<<< HEAD
 	s_cnlDefType *t = cnlDefbyPeer(cnl);
 	if (t == NULL) return;
 
 
 	uint16_t addr = cdListAddrByPtr(t, peerIdx);										// get the respective eeprom address
-=======
-	s_cnlDefType *t = cnlDefbyList(cnl, 3);
-	if (t == NULL) return;
-
-
-	uint16_t addr = cdListAddrByPtr(t, pIdx);										// get the respective eeprom address
->>>>>>> f8c4d40e146a34f1c0f9bd1ab054ffbeefc76974
 	getEeBl(addr, _pgmB(&t->sLen), (void*)_pgmW(&t->pRegs));							// load content from eeprom
 	
 	#if defined(SM_DBG)																	// some debug message
@@ -1497,18 +1428,11 @@ uint16_t HM::cdListAddrByPtr(s_cnlDefType *ptr, uint8_t peerIdx) {
 	return ee[0].regsDB + _pgmW(&ptr->pAddr) + (peerIdx * _pgmB(&ptr->sLen));			// calculate the starting address
 }
 s_cnlDefType* HM::cnlDefbyList(uint8_t cnl, uint8_t lst) {
-<<<<<<< HEAD
 	
 	for (uint8_t i = 0; i < dDef.lstNbr; i++) {											// step through the list
 
 		if ((cnl == _pgmB(&dDef.chPtr[i].cnl)) && (lst == _pgmB(&dDef.chPtr[i].lst)))
 		return (s_cnlDefType*)&dDef.chPtr[i];											// find the respective channel and list
-=======
-	for (uint8_t i = 0; i < dDef.lstNbr; i++) {											// step through the list
-
-		if ((cnl == _pgmB(&dDef.chPtr[i].cnl)) && (lst == _pgmB(&dDef.chPtr[i].lst)))
-		return (s_cnlDefType*)&dDef.chPtr[i];											 // find the respective channel and list
->>>>>>> f8c4d40e146a34f1c0f9bd1ab054ffbeefc76974
 	}
 	return NULL;																		// nothing found
 }
@@ -1521,10 +1445,7 @@ uint16_t HM::cdPeerAddrByCnlIdx(uint8_t cnl, uint8_t peerIdx) {
 	return ee[0].peerDB + _pgmW(&t->pPeer) + (peerIdx * 4);								// calculate the starting address
 }
 s_cnlDefType* HM::cnlDefbyPeer(uint8_t cnl) {
-<<<<<<< HEAD
 
-=======
->>>>>>> f8c4d40e146a34f1c0f9bd1ab054ffbeefc76974
 	for (uint8_t i = 0; i < dDef.lstNbr; i++) {											// step through the list
 
 		if ((cnl == _pgmB(&dDef.chPtr[i].cnl)) && (_pgmB(&dDef.chPtr[i].pMax)))

@@ -163,11 +163,7 @@ class HM {
 	void     sendInfoActuatorStatus(uint8_t cnl, uint8_t status, uint8_t flag);			// , send status function
 	void     sendACKStatus(uint8_t cnl, uint8_t status, uint8_t douolo);				// , send ACK with status
 	void     sendPeerREMOTE(uint8_t button, uint8_t longPress, uint8_t lowBat);			// (0x40) send REMOTE event to all peers
-<<<<<<< HEAD
 	void     sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum, uint16_t pres);	// (0x70) send WEATHER event
-=======
-	void     sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum);					// (0x70) send WEATHER event
->>>>>>> f8c4d40e146a34f1c0f9bd1ab054ffbeefc76974
 	void     sendPeerRAW(uint8_t cnl, uint8_t type, uint8_t *data, uint8_t len);		// send event to all peers listed in the peers database by channel, type specifies the type of the message, data and len delivers the content of the event
 	void     send_ACK(void);															// , ACK sending function
 	void     send_NACK(void);															// , NACK sending function
@@ -265,11 +261,7 @@ class HM {
 	uint16_t cdListAddrByPtr(s_cnlDefType *ptr, uint8_t peerIdx);
 	s_cnlDefType* cnlDefbyList(uint8_t cnl, uint8_t lst);
 
-<<<<<<< HEAD
 	uint16_t cdPeerAddrByCnlIdx(uint8_t cnl, uint8_t peerIdx);							// Ok, get the eeprom address of peers database by index and peerIdx
-=======
-	uint16_t cdPeerAddrByCnlIdx(uint8_t cnl, uint8_t peerIdx);								// Ok, get the eeprom address of peers database by index and peerIdx
->>>>>>> f8c4d40e146a34f1c0f9bd1ab054ffbeefc76974
 	s_cnlDefType* cnlDefbyPeer(uint8_t cnl);
 
 	//- pure eeprom handling, i2c to be implemented
