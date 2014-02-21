@@ -31,14 +31,14 @@
 #endif
 
 
-s_pcIntH *pcIntH;
+s_pcIntH pcIntH[10];
 uint8_t pcIntNbr = 0;
 
 void registerInt(uint8_t tPin, s_dlgt tDelegate) {
 	uint8_t pSlot = pinToSlot(tPin);													// get the position in port or PCMSK array
 	
 	pcIntNbr++;																			// increase counter because we have to add a new pin
-	pcIntH = (s_pcIntH*) realloc (pcIntH, pcIntNbr * sizeof(s_pcIntH));					// size the table
+	//pcIntH = (s_pcIntH*) realloc (pcIntH, pcIntNbr * sizeof(s_pcIntH));					// size the table
 	
 	pcIntH[pcIntNbr-1].dlgt = tDelegate;												// remember the address where we have to jump
 	pcIntH[pcIntNbr-1].pcMask = pSlot;													// remember the PCMSK 

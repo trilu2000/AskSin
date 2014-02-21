@@ -10,7 +10,7 @@
 //- input parser class
 InputParser::InputParser (byte size, const Commands *ctab, Stream& stream)
 : limit (size), cmds (ctab), io (stream) {
-	buffer = (byte*) malloc(size);
+	//buffer = (byte*) malloc(size);
 	reset();
 }
 void InputParser::reset() {
@@ -51,13 +51,47 @@ void InputParser::poll() {
 		return;
 	}
 	if ('0' <= ch && ch <= '9') {
-		if (!hasvalue)
-		value = 0;
+		if (!hasvalue) value = 0;
 		value = 10 * value + (ch - '0');
 		hasvalue = 1;
 		return;
 	}
 	hexmode = 0;
+
+	/*if (ch == '$') {
+		hexmode = 1;
+
+	} else if (ch == '"') {
+		instring = 1;
+		value = fill;
+
+	} else if (ch == ':') {
+		(word&) buffer[fill] = value;
+		fill += 2;
+		value >>= 16;
+		(word&) buffer[fill] = value;
+		fill += 2;
+		hasvalue = 0;
+
+	} else if (ch == '.') {
+		(word&) buffer[fill] = value;
+		fill += 2;
+		hasvalue = 0;
+
+	} else if (ch == '-') {
+		value = - value;
+		hasvalue = 0;
+
+	} else if (ch == ' ') {
+		if (!hasvalue) return;
+		buffer[fill++] = value;
+		hasvalue = 0;
+
+	} else if (ch == ',') {
+		buffer[fill++] = value;
+		hasvalue = 0;
+	}*/
+
 	switch (ch) {
 		case '$':   hexmode = 1;
 		return;
@@ -82,6 +116,7 @@ void InputParser::poll() {
 		hasvalue = 0;
 		return;
 	}
+
 	if (hasvalue) {
 		io.print(F("Unrecognized character: "));
 		io.print(ch);
@@ -131,14 +166,6 @@ InputParser& InputParser::operator >> (const char*& v) {
 }
 
 //- serial print functions
-char pHexEE(uint16_t addr, uint8_t len) {
-	//Serial << "x:" << addr << '\n';
-	for (uint8_t i=0; i<len; i++) {
-		Serial << pHexB(eeprom_read_byte((uint8_t*)addr++)) << ' ';
-		//if(i+1 < len) Serial << ' ';
-	}
-	return 0;
-}
 char pCharPGM(const uint8_t *buf) {
 	char c;
 	while (( c = pgm_read_byte(buf++)) != 0) Serial << c;
