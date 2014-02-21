@@ -237,6 +237,15 @@ foreach my $chn (sort{$a <=> $b}(keys %regLfull)) {														# per channel
 
 
 # == print out =========================================================================================
+#HM::s_modtable modTbl[] = {
+#	{0,0,(s_mod_dlgt)NULL},
+#	{0,0,(s_mod_dlgt)NULL},
+#};
+print "HM::s_modtable modTbl[] = {\n";
+for (my $cnt = 0; $cnt<scalar( keys %regLfull); $cnt++) {
+	print "    {0,0,(s_mod_dlgt)NULL},\n";
+}
+print "}; // " .$cnt*8 ." byte \n\n";
 
 print "//- ----------------------------------------------------------------------------------------------------------------------\n";
 print "//- channel slice definition ---------------------------------------------------------------------------------------------\n";

@@ -31,13 +31,6 @@ void     HM::init(void) {
 	prepEEprom();																		// check the eeprom for first time boot, prepares the eeprom and loads the defaults
 	loadRegs();
 
-	//dParm.cnlCnt = (uint8_t*)malloc(dDef.cnlNbr+1);										// message counter sizing
-	//memset(dParm.cnlCnt,0,dDef.cnlNbr+1);												// clear counter
-
-	// size the array for module registering
-	//modTbl = (s_modtable*)malloc((dDef.cnlNbr+1)*sizeof(s_modtable));					// size the table object to the amount of channels
-	//memset(modTbl,0,(dDef.cnlNbr+1)*sizeof(s_modtable));								// clear structure
-	
 	// communication setup
 	cc.init();																			// init the TRX868 module
 	intGDO0.nbr = cc.gdo0Int;															// make the gdo0 interrupt public

@@ -78,8 +78,8 @@ void setup() {
 	sensTHP.config(7, 9, 0, &sht10, &bmp085, 570);										// data pin, clock pin and timing - 0 means HM calculated timing, every number above will taken in milliseconds
 	//sensTHP.config(7, 9, 0, &sht10, NULL, 570);										// data pin, clock pin and timing - 0 means HM calculated timing, every number above will taken in milliseconds
 	
-	uint8_t x[] = {(uint8_t)random(256), (uint8_t)random(256), (uint8_t)random(256)};
-	Serial << pHex(x,3) << '\n';
+	//uint8_t x[] = {(uint8_t)random(256), (uint8_t)random(256), (uint8_t)random(256)};
+	//Serial << pHex(x,3) << '\n';
 	//Serial << "\npair: " << pHex(regs.ch0.l0.pairCentral,3) << '\n';	
 }
 
