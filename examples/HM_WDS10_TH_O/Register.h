@@ -6,7 +6,7 @@
 const uint8_t devParam[] PROGMEM = {
 /* Firmware version 1 byte */  0x10,									// don't know for what it is good for
 /* Model ID	        2 byte */  0x00, 0x3d,								// model ID, describes HM hardware. we should use high values due to HM starts from 0
-/* Serial ID       10 byte */  'P','S','0','0','0','0','0','0','0','3', // serial ID, needed for pairing
+/* Serial ID       10 byte */  'T','L','U','0','0','0','1','0','0','1', // serial ID, needed for pairing
 /* Sub Type ID      1 byte */  0x70,									// not needed for FHEM, it's something like a group ID
 /* Device Info      3 byte */  0x03, 0x01, 0x00							// describes device, not completely clear yet. includes amount of channels
 };
@@ -18,10 +18,12 @@ HM::s_devParm dParm = {
 /* pointer to serial       */  devParam,
 };
 
+
+
 HM::s_modtable modTbl[] = {
 	{0,0,(s_mod_dlgt)NULL},
 	{0,0,(s_mod_dlgt)NULL},
-};
+}; // 16 byte
 
 //- ----------------------------------------------------------------------------------------------------------------------
 //- channel slice definition ---------------------------------------------------------------------------------------------
@@ -64,8 +66,7 @@ struct s_regs {
 //- ----------------------------------------------------------------------------------------------------------------------
 //- channel device list table --------------------------------------------------------------------------------------------
 s_cnlDefType cnlDefType[] PROGMEM = {
-	// cnl, lst, pMax, sIdx, sLen, pAddr, pPeer, *pRegs;
-	// pointer to regs structure
+	// cnl, lst, pMax, sIdx, sLen, pAddr, pPeer, *pRegs;																	// pointer to regs structure
 
 	{0, 0, 0, 0x00, 5, 0x0000, 0x0000, (void*)&regs.ch0.l0},
 	{1, 4, 6, 0x05, 1, 0x0005, 0x0000, (void*)&regs.ch1.l4},
@@ -86,7 +87,6 @@ HM::s_eeprom ee[] = {
 	{0x0000, 0x0002, 0x001a, 0x0025,},
 	{0x0002, 0x0018, 0x000b, 0x0000,},
 }; // 16 byte
-
 
 
 

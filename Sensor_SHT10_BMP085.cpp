@@ -13,7 +13,7 @@ void MyClassName::config(uint8_t data, uint8_t sck, uint16_t timing, Sensirion *
 	nAction = 'm';
 
 	sh = tPtr;
-	sh->config(7,9);																	// configure the sensor
+	sh->config(data,sck);																	// configure the sensor
 	sh->writeSR(LOW_RES);																// low resolution is enough
 
 	if (pPtr != NULL) {																	// only if there is a valid module defined

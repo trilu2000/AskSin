@@ -65,17 +65,18 @@ void setup() {
 	hm.statusLed.config(4, 6);															// configure the status led pin
 	hm.statusLed.set(STATUSLED_BOTH, STATUSLED_MODE_BLINKFAST, 3);
 
-	hm.battery.config(1,0,1000);														// set battery measurement
+	hm.battery.config(1,0,10000);														// set battery measurement
 	hm.battery.setVoltage(30);															// voltage to 3.1 volt
 
-	hm.setPowerMode(3);																	// power mode for HM device
+	hm.setPowerMode(0);																	// power mode for HM device
 	hm.init();																			// initialize the hm module
 
 	button[0].regInHM(0,&hm);															// register buttons in HM per channel, handover HM class pointer
-	button[0].config(8, NULL);															// configure button on specific pin and handover a function pointer to the main sketch
+	//pinMode(8,INPUT_PULLUP);
+	button[0].config(9, NULL);															// configure button on specific pin and handover a function pointer to the main sketch
 
 	sensTHP.regInHM(1,&hm);																// register sensor class in hm
-	sensTHP.config(7, 9, 0, &sht10, &bmp085, 570);										// data pin, clock pin and timing - 0 means HM calculated timing, every number above will taken in milliseconds
+	sensTHP.config(A0, A1, 0, &sht10, &bmp085, 570);										// data pin, clock pin and timing - 0 means HM calculated timing, every number above will taken in milliseconds
 	//sensTHP.config(7, 9, 0, &sht10, NULL, 570);										// data pin, clock pin and timing - 0 means HM calculated timing, every number above will taken in milliseconds
 	
 	//uint8_t x[] = {(uint8_t)random(256), (uint8_t)random(256), (uint8_t)random(256)};

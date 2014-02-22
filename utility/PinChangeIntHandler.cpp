@@ -46,14 +46,16 @@ void registerInt(uint8_t tPin, s_dlgt tDelegate) {
 	
 	pinMode(tPin,INPUT_PULLUP);															// switch pin to input
 
-	
-	PCICR |= _BV(pSlot);																// register PCMSK in interrupt change register
-
 	*intMask[pSlot] |= digitalPinToBitMask(tPin);										// set the pin in the respective PCMSK
+	//Serial << "iM:" << *intMask[pSlot] << '\n';
+	PCICR |= (1 << pSlot);
+	
+	//PCICR |= _BV(pSlot);																// register PCMSK in interrupt change register
+
 	portByte[pSlot] = *pinPort[pSlot] & *intMask[pSlot];								// remember the byte in the current port to figure out changes
 
-
-	//sei();
+	//Serial << "pin:" << tPin << " pSlot:" << pSlot << " pB:" << portByte[pSlot] << '\n';
+	sei();
 
 }
 
@@ -61,17 +63,16 @@ void collectPCINT(uint8_t vectInt) {
 	cli();
 	
 	uint8_t intByte = *pinPort[vectInt] & *intMask[vectInt];							// get the input byte
-
+	
 	uint8_t msk = portByte[vectInt] ^ intByte;											// mask out the changes
 	portByte[vectInt] = intByte;														// store pin byte for next time check
+
 	if (msk == 0) {																		// seams to be a repeat, noting to do
 		sei();
 		return;
 	}
 	
 	uint8_t bitStat = (intByte < *intMask[vectInt])?0:1;								// prepare the bit status for the pin
-
-	//Serial << "p:" << vectInt << ", s:" << bitStat << ", n:" << msk << '\n';			// some debug
 
 	for (uint8_t i = 0; i < pcIntNbr; i++) {											// jump through the table and search for registered function
 		if ((pcIntH[i].pcMask == vectInt) && (pcIntH[i].byMask == msk)) pcIntH[i].dlgt(bitStat);
