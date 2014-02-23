@@ -6,13 +6,13 @@
 const uint8_t devParam[] PROGMEM = {
 /* Firmware version 1 byte */  0x10,									// don't know for what it is good for
 /* Model ID	        2 byte */  0x00, 0x3d,								// model ID, describes HM hardware. we should use high values due to HM starts from 0
-/* Serial ID       10 byte */  'T','L','U','0','0','0','1','0','0','1', // serial ID, needed for pairing
+/* Serial ID       10 byte */  'T','L','U','0','0','0','1','0','0','2', // serial ID, needed for pairing
 /* Sub Type ID      1 byte */  0x70,									// not needed for FHEM, it's something like a group ID
 /* Device Info      3 byte */  0x03, 0x01, 0x00							// describes device, not completely clear yet. includes amount of channels
 };
 
 HM::s_devParm dParm = {
-/* device HM Id     3 byte */ {0x6F, 0xB7, 0x4C},						// very important, must be unique. identifier for the device in the network
+/* device HM Id     3 byte */ {0x6F, 0xB7, 0x4D},						// very important, must be unique. identifier for the device in the network
 /* send retries		1 byte */  3,										// how often a string should be send out until we get an answer
 /* send timeout     2 byte */  700,										// time out for ACK handling
 /* pointer to serial       */  devParam,
