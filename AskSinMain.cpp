@@ -466,7 +466,7 @@ void     HM::recv_poll(void) {															// handles the receive objects
 	}
 
 	
-	if ((recv.forUs) && (recv_isMsg)) {													// message is a config message
+	if (((recv.forUs) || (recv.bCast)) && (recv_isMsg)) {								// message is a config message
 		if (recv_msgTp == 0x01) {														// configuration message handling
 			recv_PairConfig();
 		

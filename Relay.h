@@ -25,7 +25,8 @@
 class MyClassName {
   //- user code here ------------------------------------------------------------------------------------------------------
   public://----------------------------------------------------------------------------------------------------------------
-	void     config(uint8_t type, uint8_t pinOn, uint8_t pinOff, uint8_t minDelay, uint8_t randomDelay);
+	//void     config(uint8_t type, uint8_t pinOn, uint8_t pinOff, uint8_t minDelay, uint8_t randomDelay);
+	void     config(void Init(), void Switch(uint8_t), uint8_t minDelay, uint8_t randomDelay);
 
   protected://-------------------------------------------------------------------------------------------------------------
   private://---------------------------------------------------------------------------------------------------------------
@@ -69,6 +70,9 @@ class MyClassName {
 		uint8_t lgSwJtDlyOff        :4;
 	};
 
+	void (*tInit)(void);
+	void (*tSwitch)(uint8_t);
+	
 	uint8_t hwType:1;																	// 0 indicates a monostable, 1 a bistable relay
 	uint8_t hwPin[2];																	// first byte for on, second for off
 	uint8_t msgRecvCnt;																	// receive counter to avoid double action on one message

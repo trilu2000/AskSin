@@ -30,27 +30,26 @@ const uint8_t peerSingle[] = {
 
 //- user code here --------------------------------------------------------------------------------------------------------
 // public function for setting the module
-void MyClassName::config(uint8_t type, uint8_t pinOn, uint8_t pinOff, uint8_t minDelay, uint8_t randomDelay) {
+//void MyClassName::config(uint8_t type, uint8_t pinOn, uint8_t pinOff, uint8_t minDelay, uint8_t randomDelay) {
+void MyClassName::config(void Init(), void Switch(uint8_t), uint8_t minDelay, uint8_t randomDelay) {
 	// store config settings in class
-	hwType = type;																// 0 indicates a monostable, 1 a bistable relay
-	hwPin[0] = pinOn;															// first byte for on, second for off
-	hwPin[1] = pinOff;
+	//hwType = type;																// 0 indicates a monostable, 1 a bistable relay
+	//hwPin[0] = pinOn;															// first byte for on, second for off
+	//hwPin[1] = pinOff;
+
+	tInit = Init;
+	tSwitch = Switch;
 
 	mDel = minDelay;															// remember minimum delay for sending the status
 	rDel = (randomDelay)?randomDelay:1;											// remember random delay for sending the status
 
 	// set output pins
-	pinMode(hwPin[0], OUTPUT);													// set pinOn to output
-	digitalWrite(hwPin[0],LOW);													// set port to low
-	
-	if (hwType) {																// if we are in bistable mode
-		pinMode(hwPin[1], OUTPUT);												// set pinOn to output
-		digitalWrite(hwPin[1],LOW);												// set port to low
-	}
+	tInit();
 
 	// some basic settings for start
-	curStat = 6;																// set relay status to off
+	nxtStat = 6;																// set relay status to off
 	adjRly(0);																	// set relay to a defined status
+	curStat = 6;																// set relay status to off
 }
 
 // private functions for triggering some action
@@ -132,20 +131,8 @@ void MyClassName::trigger41(uint8_t lngIn, uint8_t val) {
 // private functions for setting relay and getting current status
 void MyClassName::adjRly(uint8_t tValue) {
 	if (curStat == nxtStat) return;												// nothing to do
-	if (hwType == 0) {															// monostable - on
-		if (hwPin[0] > 0) digitalWrite(hwPin[0],tValue);						// write the state to the port pin
-
-	} else if ((hwType == 1) && (tValue == 1)) {								// bistable - on
-		if (hwPin[0] > 0) digitalWrite(hwPin[0],1);								// port pin to on
-		delay(50);																// wait a short time
-		if (hwPin[0] > 0) digitalWrite(hwPin[0],0);								// port pin to off again
-
-	} else if ((hwType == 1) && (tValue == 0)) {								// bistable - off
-		if (hwPin[1] > 0) digitalWrite(hwPin[2],1);								// port pin to on
-		delay(50);																// wait a short time
-		if (hwPin[1] > 0) digitalWrite(hwPin[2],0);								// port pin to off again
-	}
-
+	tSwitch(tValue);
+	
 	modStat = (tValue)?0xc8:0x00;
 
 	#ifdef DM_DBG
