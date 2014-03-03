@@ -76,8 +76,8 @@ void setup() {
 	button[0].config(9, NULL);															// configure button on specific pin and handover a function pointer to the main sketch
 
 	sensTHP.regInHM(1,&hm);																// register sensor class in hm
-	sensTHP.config(A0, A1, 0, &sht10, &bmp085, 570);										// data pin, clock pin and timing - 0 means HM calculated timing, every number above will taken in milliseconds
-	//sensTHP.config(7, 9, 0, &sht10, NULL, 570);										// data pin, clock pin and timing - 0 means HM calculated timing, every number above will taken in milliseconds
+	sensTHP.config(A4, A5, 0, &sht10, &bmp085, 570);										// data pin, clock pin and timing - 0 means HM calculated timing, every number above will taken in milliseconds
+	//sensTHP.config(A4, A5, 0, &sht10, NULL, 570);										// data pin, clock pin and timing - 0 means HM calculated timing, every number above will taken in milliseconds
 	
 	//uint8_t x[] = {(uint8_t)random(256), (uint8_t)random(256), (uint8_t)random(256)};
 	//Serial << pHex(x,3) << '\n';

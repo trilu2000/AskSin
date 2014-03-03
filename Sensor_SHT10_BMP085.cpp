@@ -5,6 +5,10 @@
 //- SHT10 and BMP085 Sensor class -----------------------------------------------------------------------------------------
 //- -----------------------------------------------------------------------------------------------------------------------
 #include "Sensor_SHT10_BMP085.h"
+extern "C" {
+	#include <Wire.h>
+	#include <twi.h>
+}
 
 //- user code here --------------------------------------------------------------------------------------------------------
 void MyClassName::config(uint8_t data, uint8_t sck, uint16_t timing, Sensirion *tPtr, BMP085 *pPtr, uint16_t Altidude) {
@@ -18,7 +22,6 @@ void MyClassName::config(uint8_t data, uint8_t sck, uint16_t timing, Sensirion *
 
 	if (pPtr != NULL) {																	// only if there is a valid module defined
 		bm = pPtr;
-		bm->begin(0);
 		tAlt = Altidude;
 	}
 }
@@ -29,6 +32,7 @@ void MyClassName::poll_measure(void) {
 
 	// measurement code
 	// http://www.sensirion.com/fileadmin/user_upload/customers/sensirion/Dokumente/Humidity/Sensirion_Humidity_SHT1x_Datasheet_V5.pdf
+	
 	uint16_t rawData;
 	sh->measTemp(&rawData);
 	
@@ -42,7 +46,9 @@ void MyClassName::poll_measure(void) {
 	//Serial << "raw: " << rawData << "  mH: " << tHum << '\n';
 	
 	if (bm != NULL) {																	// only if we have a valid module
+		bm->begin(0);
 		tPres = (uint16_t)((bm->readPressure()/100)/pow(1-(tAlt/44330.0),5.255));		// calculate pressure on sea level
+		TWCR = 0;
 		//Serial << " p: " << tPres << '\n';
 	}
 }
