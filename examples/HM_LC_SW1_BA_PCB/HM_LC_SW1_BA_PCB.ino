@@ -60,7 +60,8 @@ void setup() {
 	button[0].config(8, NULL);															// configure button on specific pin and handover a function pointer to the main sketch
 
 	relay[0].regInHM(1,&hm);															// register relay class in HM to respective channel	
-	relay[0].config(0,3,0,5,5);															// configure the relay to monostable, therefore only one HW pin needed
+	//relay[0].config(0,3,0,5,5);															// configure the relay to monostable, therefore only one HW pin needed
+	relay[0].config(&initRelay,&switchRelay,2,2);										// init function, switch function, min delay, random delay for transmitting status message
 	
 	Serial << "\npair: " << pHex(regs.ch0.l0.pairCentral,3) << '\n';	
 }
@@ -68,6 +69,21 @@ void setup() {
 void loop() {
 	parser.poll();																		// handle serial input from console
 	hm.poll();																			// poll the HM communication
+}
+
+
+void initRelay() {
+	digitalWrite(5,0);
+	pinMode(5,OUTPUT);
+}
+void switchRelay(uint8_t on) {
+	if (on) {
+		digitalWrite(5,1);
+
+		} else {
+		digitalWrite(5,0);
+		
+	}
 }
 
 
