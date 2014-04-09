@@ -104,7 +104,7 @@ void SHT10_BMP085_TSL2561::poll_transmit(void) {
 	}
 	
 	// hoffmann
-	nTime = mils + 5000;
+//	nTime = mils + 5000;
 
 	nAction = 'm';																// next time we want to measure again
 
