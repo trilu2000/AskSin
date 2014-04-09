@@ -19,13 +19,16 @@ void InputParser::reset() {
 	top = limit;
 }
 void InputParser::poll() {
-	if (!io.available())
-	return;
+	if (!io.available()) {
+		return;
+	}
+
 	char ch = io.read();
 	if (ch < ' ' || fill >= top) {
 		reset();
 		return;
 	}
+
 	if (instring) {
 		if (ch == '"') {
 			buffer[fill++] = 0;
@@ -38,9 +41,8 @@ void InputParser::poll() {
 		buffer[fill++] = ch;
 		return;
 	}
-	if (hexmode && (('0' <= ch && ch <= '9') ||
-	('A' <= ch && ch <= 'F') ||
-	('a' <= ch && ch <= 'f'))) {
+
+	if (hexmode && (('0' <= ch && ch <= '9') || ('A' <= ch && ch <= 'F') || ('a' <= ch && ch <= 'f'))) {
 		if (!hasvalue)
 		value = 0;
 		if (ch > '9')
@@ -50,12 +52,14 @@ void InputParser::poll() {
 		hasvalue = 1;
 		return;
 	}
+
 	if ('0' <= ch && ch <= '9') {
 		if (!hasvalue) value = 0;
 		value = 10 * value + (ch - '0');
 		hasvalue = 1;
 		return;
 	}
+
 	hexmode = 0;
 
 	/*if (ch == '$') {
@@ -93,28 +97,39 @@ void InputParser::poll() {
 	}*/
 
 	switch (ch) {
-		case '$':   hexmode = 1;
-		return;
-		case '"':   instring = 1;
-		value = fill;
-		return;
-		case ':':   (word&) buffer[fill] = value;
-		fill += 2;
-		value >>= 16;
-		// fall through
-		case '.':   (word&) buffer[fill] = value;
-		fill += 2;
-		hasvalue = 0;
-		return;
-		case '-':   value = - value;
-		hasvalue = 0;
-		return;
-		case ' ':   if (!hasvalue)
-		return;
-		// fall through
-		case ',':   buffer[fill++] = value;
-		hasvalue = 0;
-		return;
+		case '$':
+			hexmode = 1;
+			return;
+
+		case '"':
+			instring = 1;
+			value = fill;
+			return;
+		case ':':
+			(word&) buffer[fill] = value;
+			fill += 2;
+			value >>= 16;
+			// fall through
+
+		case '.':
+			(word&) buffer[fill] = value;
+			fill += 2;
+			hasvalue = 0;
+			return;
+
+		case '-':
+			value = - value;
+			hasvalue = 0;
+			return;
+
+		case ' ':
+			if (!hasvalue) return;
+			// fall through
+
+		case ',':
+			buffer[fill++] = value;
+			hasvalue = 0;
+			return;
 	}
 
 	if (hasvalue) {
@@ -159,6 +174,7 @@ InputParser& InputParser::get(void *ptr, byte len) {
 	next += len;
 	return *this;
 }
+
 InputParser& InputParser::operator >> (const char*& v) {
 	byte offset = buffer[next++];
 	v = top <= offset && offset < limit ? (char*) buffer + offset : "";

@@ -19,10 +19,9 @@
 #include "utility/Helpers.h"
 #include "utility/Fastdelegate.h"
 
-#define MyClassName Relay																// module name as macro to overcome the problem of renaming functions all the time
 //#define DM_DBG																		// debug message flag
 
-class MyClassName {
+class Relay {
   //- user code here ------------------------------------------------------------------------------------------------------
   public://----------------------------------------------------------------------------------------------------------------
 	//void     config(uint8_t type, uint8_t pinOn, uint8_t pinOff, uint8_t minDelay, uint8_t randomDelay);

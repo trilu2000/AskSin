@@ -9,13 +9,14 @@
 #include "cc110x.h"
 
 void    CC110x::config(uint8_t csP, uint8_t mosiP, uint8_t misoP, uint8_t sckP, uint8_t gdo0P, uint8_t int_gdo0) {															// initialize CC1101
-	 csPin = csP; 
-	 mosiPin = mosiP; 
-	 misoPin = misoP; 
-	 sckPin = sckP; 
-	 gdo0Pin = gdo0P;
-	 int_gdo0 = gdo0Int;
+	csPin = csP;
+	mosiPin = mosiP;
+	misoPin = misoP;
+	sckPin = sckP;
+	gdo0Pin = gdo0P;
+	int_gdo0 = gdo0Int;
 }
+
 void    CC110x::init(void) {															// initialize CC1101
 	
 	#if defined(CC_DBG)
@@ -35,17 +36,19 @@ void    CC110x::init(void) {															// initialize CC1101
 	SPCR = _BV(SPE) | _BV(MSTR);														// SPI speed = CLK/4
 
 	cc1101_Deselect();																	// some deselect and selects to init the TRX868modul
-	delayMicroseconds(5);
+	_delay_us(5);
+
 	cc1101_Select();
-	delayMicroseconds(10);
+	_delay_us(10);
+
 	cc1101_Deselect();
-	delayMicroseconds(41);
+	_delay_us(41);
 
 	cmdStrobe(CC1101_SRES);																// send reset
-	delay(10);
+	_delay_ms(10);
 
 	#if defined(CC_DBG)
-	Serial << '1';
+		Serial << '1';
 	#endif
 
 	static prog_uint8_t initVal[] PROGMEM = {											// define init settings for TRX868
@@ -79,24 +82,26 @@ void    CC110x::init(void) {															// initialize CC1101
 		0x2D, 0x35,			// TEST1
 		0x3E, 0xC3,			// ?
 	};
+
 	for (uint8_t i=0; i<sizeof(initVal); i++) {											// write init value to TRX868
 		writeReg(pgm_read_byte(&initVal[i++]), pgm_read_byte(&initVal[i]));
 	}
 
 	#if defined(CC_DBG)
-	Serial << '2';
+		Serial << '2';
 	#endif
 
 	cmdStrobe(CC1101_SCAL);																// calibrate frequency synthesizer and turn it off
 	while (readReg(CC1101_MARCSTATE, CC1101_STATUS) != 1) {								// waits until module gets ready
-		delayMicroseconds(1);
+		_delay_us(1);
+
 		#if defined(CC_DBG)
-		Serial << '.';
+			Serial << '.';
 		#endif
 	}
 
 	#if defined(CC_DBG)
-	Serial << '3';
+		Serial << '3';
 	#endif
 
 	writeReg(CC1101_PATABLE, PA_MaxPower);												// configure PATABLE
@@ -107,6 +112,7 @@ void    CC110x::init(void) {															// initialize CC1101
 	Serial << F(" - ready\n");
 	#endif
 }
+
 uint8_t CC110x::sendData(uint8_t *buf, uint8_t burst) {									// send data packet via RF
 
 	// Going from RX to TX does not work if there was a reception less than 0.5
@@ -123,10 +129,11 @@ uint8_t CC110x::sendData(uint8_t *buf, uint8_t burst) {									// send data pac
 
 	if (burst) {																		// BURST-bit set?
 		cmdStrobe(CC1101_STX  );														// send a burst
-		delay(360);																		// according to ELV, devices get activated every 300ms, so send burst for 360ms
+		_delay_ms(360);																	// according to ELV, devices get activated every 300ms, so send burst for 360ms
 		//Serial << "send burst\n";
+
 	} else {
-		delay(1);																		// wait a short time to set TX mode
+		_delay_ms(1);																	// wait a short time to set TX mode
 	}
 
 	writeBurst(CC1101_TXFIFO, buf, buf[0]+1);											// write in TX FIFO
@@ -140,7 +147,7 @@ uint8_t CC110x::sendData(uint8_t *buf, uint8_t burst) {									// send data pac
 		if( readReg(CC1101_MARCSTATE, CC1101_STATUS) != MARCSTATE_TX) {
 			break;																		//neither in RX nor TX, probably some error
 		}
-		delayMicroseconds(10);
+		_delay_us(10);
 	}
 
 	//uint8_t cnt = 0xff;
@@ -148,12 +155,13 @@ uint8_t CC110x::sendData(uint8_t *buf, uint8_t burst) {									// send data pac
 	//delayMicroseconds(10);
 
 	#if defined(CC_DBG)																	// some debug message
-	Serial << F("<- ") << pHexL(&buf[0], buf[0]+1) << pTime();
+		Serial << F("<- ") << pHexL(&buf[0], buf[0]+1) << pTime();
 	#endif
 
 	//Serial << "rx\n";
 	return true;
 }
+
 uint8_t CC110x::receiveData(uint8_t *buf) {												// read data packet from RX FIFO
 	uint8_t rxBytes = readReg(CC1101_RXBYTES, CC1101_STATUS);							// how many bytes are in the buffer
 	
@@ -186,6 +194,7 @@ uint8_t CC110x::receiveData(uint8_t *buf) {												// read data packet from 
 
 	return buf[0];																		// return the data buffer
 }
+
 uint8_t CC110x::detectBurst(void) {														// wake up CC1101 from power down state
 	// 10 7/10 5 in front of the received string; 33 after received string
 	// 10 - 00001010 - sync word found
@@ -212,19 +221,21 @@ uint8_t CC110x::detectBurst(void) {														// wake up CC1101 from power do
 	wait_Miso();																		// wait until MISO goes low
 	cc1101_Deselect();																	// deselect CC1101
 	cmdStrobe(CC1101_SRX);																// set RX mode again
-	delay(3);																			// wait a short time to set RX mode
+	_delay_ms(3);																		// wait a short time to set RX mode
 
 	// todo: check carrier sense for 5ms to avoid wakeup due to normal transmition
 	//Serial << "rx\n";
 //	return bitRead(hm.cc.monitorStatus(),6);											// return the detected signal
 	return bitRead(monitorStatus(),6);													// return the detected signal
 }
+
 void    CC110x::setPowerDownState() {													// put CC1101 into power-down state
 	cmdStrobe(CC1101_SIDLE);															// coming from RX state, we need to enter the IDLE state first
 	cmdStrobe(CC1101_SFRX);
 	cmdStrobe(CC1101_SPWD);																// enter power down state
 	//Serial << "pd\n";
 }
+
 uint8_t CC110x::monitorStatus() {
 	return readReg(CC1101_PKTSTATUS, CC1101_STATUS);
 }
@@ -234,12 +245,14 @@ uint8_t CC110x::sendSPI(uint8_t val) {													// send byte via SPI
 	while(!(SPSR & _BV(SPIF)));															// wait until SPI operation is terminated
 	return SPDR;
 }
+
 void    CC110x::cmdStrobe(uint8_t cmd) {												// send command strobe to the CC1101 IC via SPI
 	cc1101_Select();																	// select CC1101
 	wait_Miso();																		// wait until MISO goes low
 	sendSPI(cmd);																		// send strobe command
 	cc1101_Deselect();																	// deselect CC1101
 }
+
 void    CC110x::writeBurst(uint8_t regAddr, uint8_t *buf, uint8_t len) {				// write multiple registers into the CC1101 IC via SPI
 	cc1101_Select();																	// select CC1101
 	wait_Miso();																		// wait until MISO goes low
@@ -247,6 +260,7 @@ void    CC110x::writeBurst(uint8_t regAddr, uint8_t *buf, uint8_t len) {				// w
 	for(uint8_t i=0 ; i<len ; i++) sendSPI(buf[i]);										// send value
 	cc1101_Deselect();																	// deselect CC1101
 }
+
 void    CC110x::readBurst(uint8_t *buf, uint8_t regAddr, uint8_t len) {					// read burst data from CC1101 via SPI
 	cc1101_Select();																	// select CC1101
 	wait_Miso();																		// wait until MISO goes low
@@ -254,6 +268,7 @@ void    CC110x::readBurst(uint8_t *buf, uint8_t regAddr, uint8_t len) {					// r
 	for(uint8_t i=0 ; i<len ; i++) buf[i] = sendSPI(0x00);								// read result byte by byte
 	cc1101_Deselect();																	// deselect CC1101
 }
+
 uint8_t CC110x::readReg(uint8_t regAddr, uint8_t regType) {								// read CC1101 register via SPI
 	cc1101_Select();																	// select CC1101
 	wait_Miso();																		// wait until MISO goes low
@@ -262,6 +277,7 @@ uint8_t CC110x::readReg(uint8_t regAddr, uint8_t regType) {								// read CC110
 	cc1101_Deselect();																	// deselect CC1101
 	return val;
 }
+
 void    CC110x::writeReg(uint8_t regAddr, uint8_t val) {								// write single register into the CC1101 IC via SPI
 	cc1101_Select();																	// select CC1101
 	wait_Miso();																		// wait until MISO goes low

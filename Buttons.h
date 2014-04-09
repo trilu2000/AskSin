@@ -19,11 +19,10 @@
 #include "utility/Fastdelegate.h"
 #include "utility/PinChangeIntHandler.h"
 
-#define MyClassName Buttons																// module name as macro to overcome the problem of renaming functions all the time
-//#define DM_DBG																		// debug message flag
+//#define DM_DBG																// debug message flag
 
 
-class MyClassName {
+class Buttons {
   //- user code here ------------------------------------------------------------------------------------------------------
   public://----------------------------------------------------------------------------------------------------------------
 	void     config(uint8_t Pin, void tCallBack(uint8_t, uint8_t));
