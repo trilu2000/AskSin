@@ -34,7 +34,6 @@ void     HM::init(void) {
 	// communication setup
 	cc.init();																			// init the TRX868 module
 	intGDO0.nbr = cc.gdo0Int;															// make the gdo0 interrupt public
-	intGDO0.ptr = this;																	// make the address of this instance public
 	attachInterrupt(intGDO0.nbr,isrGDO0,FALLING);										// attach the interrupt
 
 	memcpy_P(hmId, &dParm.p[17], 3);													// initialize hmId
@@ -43,13 +42,9 @@ void     HM::init(void) {
 	hm.stayAwake(1000);
 }
 
-void     HM::recvInterrupt(void) {
-	if (hm.cc.receiveData(hm.recv.data)) {												// is something in the receive string
-		hm.hm_dec(hm.recv.data);														// decode the content
-	}
-}
-
 void     HM::poll(void) {														// task scheduler
+
+	if (int0_flag)        cc1101Recv_poll();
 	if (recv.data[0] > 0) recv_poll();											// trace the received string and decide what to do further
 	if (send.counter > 0) send_poll();											// something to send in the buffer?
 	if (conf.act > 0)     send_conf_poll();										// some config to be send out
@@ -59,6 +54,17 @@ void     HM::poll(void) {														// task scheduler
 	module_poll();																// poll the registered channel modules
 	statusLed.poll();															// poll the status leds
 	battery.poll();																// poll the battery check
+}
+
+void     HM::cc1101Recv_poll(void) {
+	detachInterrupt(intGDO0.nbr);												// switch interrupt off
+
+	if (hm.cc.receiveData(hm.recv.data)) {										// is something in the receive string
+		hm.hm_dec(hm.recv.data);												// decode the content
+	}
+
+	int0_flag = 0;
+	attachInterrupt(intGDO0.nbr,isrGDO0,FALLING);								// switch interrupt on again
 }
 
 void     HM::send_out(void) {
@@ -122,19 +128,19 @@ void     HM::setPowerMode(uint8_t mode) {
 		powr.minTO = 2000;																// stay awake for 2 seconds after sending
 		powr.nxtTO = millis() + 250;													// check in 250ms for a burst signal
 
-		MCUSR &= ~(1<<WDRF);															// clear the reset flag
+//		MCUSR &= ~(1<<WDRF);															// clear the reset flag
 		WDTCSR |= (1<<WDCE) | (1<<WDE);													// set control register to change and enable the watch dog
 		WDTCSR = 1<<WDP2;																// 250 ms
-		powr.wdTme = 256;																// store the watch dog time for adding in the poll function
+		powr.wdTme = 250;																// store the watch dog time for adding in the poll function
 		set_sleep_mode(SLEEP_MODE_PWR_DOWN);											// max power saving
 
 	} else if (mode == 3) {																// most power savings, RX is off beside a special function where RX stay in receive for 30 sec
-		MCUSR &= ~(1<<WDRF);															// clear the reset flag
+//		MCUSR &= ~(1<<WDRF);															// clear the reset flag
 		WDTCSR |= (1<<WDCE) | (1<<WDE);													// set control register to change and enable the watch dog
 		WDTCSR = 1<<WDP2;																// 250 ms
 		//WDTCSR = 1<<WDP1 | 1<<WDP2;													// 1000 ms
 		//WDTCSR = 1<<WDP0 | 1<<WDP1 | 1<<WDP2;											// 2000 ms
-		//WDTCSR = 1<<WDP0 | 1<<WDP3;														// 8000 ms
+		//WDTCSR = 1<<WDP0 | 1<<WDP3;													// 8000 ms
 		powr.wdTme = 250;																// store the watch dog time for adding in the poll function
 		//powr.wdTme = 8190;																// store the watch dog time for adding in the poll function
 	}
@@ -517,18 +523,30 @@ void     HM::send_NACK(void) {
 //- hm communication functions
 void     HM::recv_poll(void) {															// handles the receive objects
 	// do some checkups
-	if (memcmp(&recv.data[7], hmId, 3) == 0) recv.forUs = 1;						// for us
-	else recv.forUs = 0;
-	if (memcmp(&recv.data[7], bCast, 3) == 0)      recv.bCast = 1;						// or a broadcast
-	else recv.bCast = 0;																// otherwise only a log message
+	if (memcmp(&recv.data[7], hmId, 3) == 0) {
+		recv.forUs = 1;																	// for us
+	} else {
+		recv.forUs = 0;
+	}
+
+	if (memcmp(&recv.data[7], bCast, 3) == 0) {
+		recv.bCast = 1;																	// or a broadcast
+	} else {
+		recv.bCast = 0;																	// otherwise only a log message
+	}
 	
 	// show debug message
 	#ifdef AS_DBG																		// some debug message
-	if(recv.forUs) Serial << F("-> ");
-	else if(recv.bCast) Serial << F("b> ");
-	else Serial << F("l> ");
-	Serial << pHexL(recv.data, recv.data[0]+1) << pTime();
-	exMsg(recv.data);																	// explain message
+		if(recv.forUs) {
+			Serial << F("-> ");
+		} else if(recv.bCast) {
+			Serial << F("b> ");
+		} else {
+			Serial << F("l> ");
+		}
+
+		Serial << pHexL(recv.data, recv.data[0]+1) << pTime();
+		exMsg(recv.data);																// explain message
 	#endif
 
 	// if it's not for us or a broadcast message we could skip
@@ -540,8 +558,9 @@ void     HM::recv_poll(void) {															// handles the receive objects
 	// is the message from a valid sender (pair or peer), if not then exit - takes ~2ms
 	if ((isPairKnown(recv_reID) == 0) && (isPeerKnown(recv_reID) == 0)) {				// check against peers
 		#if defined(AS_DBG)																// some debug message
-		Serial << "pair/peer did not fit, exit\n";
+			Serial << "pair/peer did not fit, exit\n";
 		#endif
+
 		recv.data[0] = 0;																// clear receive string
 		return;
 	}
@@ -549,9 +568,12 @@ void     HM::recv_poll(void) {															// handles the receive objects
 	// check if it was a repeated message, delete while already received
 	if (recv_isRpt) {																	// check repeated flag
 		#if defined(AS_DBG)																// some debug message
-		Serial << F("   repeated message; ");
-		if (recv.mCnt == recv_rCnt) Serial << F("already received - skip\n");
-		else Serial << F("not received before...\n");
+			Serial << F("   repeated message; ");
+			if (recv.mCnt == recv_rCnt) {
+				Serial << F("already received - skip\n");
+			} else {
+				Serial << F("not received before...\n");
+			}
 		#endif
 		
 		if (recv.mCnt == recv_rCnt) {													// already received
@@ -565,7 +587,6 @@ void     HM::recv_poll(void) {															// handles the receive objects
 		recv.mCnt = recv_rCnt;
 	}
 
-	
 	if (((recv.forUs) || (recv.bCast)) && (recv_isMsg)) {								// message is a config message
 		if (recv_msgTp == 0x01) {														// configuration message handling
 			recv_PairConfig();
@@ -588,15 +609,18 @@ void     HM::recv_poll(void) {															// handles the receive objects
 		}
 
 		#if defined(AS_DBG)																// some debug message
-		else Serial << F("\nUNKNOWN MESSAGE, PLEASE REPORT!\n\n");
+			else Serial << F("\nUNKNOWN MESSAGE, PLEASE REPORT!\n\n");
 		#endif
 	}
 	
-	if (recv.forUs) main_Jump();														// does main sketch want's to be informed?
+	if (recv.forUs) {
+		main_Jump();																	// does main sketch want's to be informed?
+	}
 
 	//to do: if it is a broadcast message, do something with
 	recv.data[0] = 0;																	// otherwise ignore
 }
+
 void     HM::send_poll(void) {															// handles the send queue
 	unsigned long mils = millis();
 
@@ -692,6 +716,7 @@ void     HM::send_conf_poll(void) {
 	}
 	
 }
+
 void     HM::send_peer_poll(void) {
 	// step through the peers and send the message
 	// if we didn't found a peer to send to, then send status to master
@@ -742,6 +767,7 @@ void     HM::send_peer_poll(void) {
 	//Serial << "rB:" << pHexB(lB[0]) << '\n';
 	send_prep(send.mCnt++,(0x82|pevt.reqACK|bitRead(lB[0],0)<<4),pevt.type,(uint8_t*)&tPeer,pevt.data,pevt.len); // prepare the message
 }
+
 void     HM::power_poll(void) {
 	// there are 3 power modes for the TRX868 module
 	// TX mode will switched on while something is in the send queue
@@ -1198,11 +1224,14 @@ void     HM::recv_PeerEvent(void) {
 	// send appropriate answer ---------------------------------------------
 	// answer should be initiated by client function in user area
 }
+
 uint8_t  HM::main_Jump(void) {
 	uint8_t ret = 0;
 	for (uint8_t i = 0; ; i++) {														// find the call back function
 		s_jumptable *p = &jTbl[i];														// some shorthand
-		if (p->by3 == 0) break;															// break if on end of list
+		if (p->by3 == 0) {
+			break;																		// break if on end of list
+		}
 		
 		if ((p->by3 != recv_msgTp) && (p->by3  != 0xff)) continue;						// message type didn't fit, therefore next
 		if ((p->by10 != recv_by10) && (p->by10 != 0xff)) continue;						// byte 10 didn't fit, therefore next
@@ -1212,6 +1241,7 @@ uint8_t  HM::main_Jump(void) {
 		p->fun(recv_payLoad, recv_len - 9);												// and jump into
 		ret = 1;																		// remember that we found a valid function to jump into
 	}
+
 	return ret;
 }
 uint8_t  HM::module_Jump(uint8_t *by3, uint8_t *by10, uint8_t *by11, uint8_t *cnl, uint8_t *data, uint8_t len) {
@@ -1636,10 +1666,9 @@ HM hm;
 
 //- interrupt handling for interface communication module to AskSin library
 void isrGDO0() {
-	detachInterrupt(intGDO0.nbr);														// switch interrupt off
-	intGDO0.ptr->recvInterrupt();														// call the interrupt handler of the active AskSin class
-	attachInterrupt(intGDO0.nbr,isrGDO0,FALLING);										// switch interrupt on again
+	int0_flag = true;
 }
+
 ISR( WDT_vect ) {
 	wd_flag = 1;
 }

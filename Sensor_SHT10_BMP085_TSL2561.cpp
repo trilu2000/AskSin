@@ -74,11 +74,14 @@ void SHT10_BMP085_TSL2561::poll_measure(void) {
 
 	unsigned int data0, data1;
 	tLux = tsl2561->readBrightness(data0, data1) * 100;
-	tData0 = (uint32_t)data0;
-	tData1 = (uint32_t)data1;
 
 	if (tsl2561->getError()) {
 		tLux = 0;
+		tData0 = 0;
+		tData1 = 0;
+	} else {
+		tData0 = (uint32_t)data0;
+		tData1 = (uint32_t)data1;
 	}
 
 //	counter++;

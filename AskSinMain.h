@@ -56,6 +56,7 @@ struct s_defaultRegsTbl {		// struct for storing some defaults
 //- -----------------------------------------------------------------------------------------------------------------------
 
 //- interrupt handling
+static volatile uint8_t int0_flag;
 static volatile uint8_t wd_flag;
 extern volatile unsigned long timer0_millis;											// make millis timer available for correcting after deep sleep
 
@@ -145,7 +146,6 @@ class HM {
 
 	//- homematic public protocol functions
 	void     init(void);																// Ok, initialize the HomeMatic module
-	void     recvInterrupt(void);														// Ok, interrupt handler for receive interrupt
 	void     poll(void);																// OK, main task to manage TX and RX messages
 	void     send_out(void);															// OK, send function
 
@@ -212,6 +212,7 @@ class HM {
 	#define  recv_toMst			bitRead(recv.data[2],1)									// message to master, true if 0x02 was set
 
 	//- hm communication functions
+	void     cc1101Recv_poll(void);
 	void     recv_poll(void);															// handles the received string
 	void     send_poll(void);															// handles the send queue
 	void     send_conf_poll(void);														// handles information requests
@@ -295,8 +296,8 @@ extern HM hm;
 //- interrupt handling for interface communication module to AskSin library 
 struct s_intGDO0 {
 	uint8_t nbr;
-	HM *ptr;	
 };
+
 void isrGDO0(void);
 
 ISR( WDT_vect );

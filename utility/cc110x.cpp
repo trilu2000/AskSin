@@ -180,7 +180,9 @@ uint8_t CC110x::receiveData(uint8_t *buf) {												// read data packet from 
 			lqi = val & 0x7F;
 			crc_ok = bitRead(val, 7);
 		}
-	} else buf[0] = 0;																	// nothing to do, or overflow
+	} else {
+		buf[0] = 0;																		// nothing to do, or overflow
+	}
 
 	cmdStrobe(CC1101_SFRX);																// flush Rx FIFO
 	cmdStrobe(CC1101_SIDLE);															// enter IDLE state
