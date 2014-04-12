@@ -169,7 +169,7 @@ class HM {
 	void     sendPeerREMOTE(uint8_t button, uint8_t longPress, uint8_t lowBat);			// (0x40) send REMOTE event to all peers
 //	void     sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum, uint16_t pres, uint32_t lux);	// (0x70) send WEATHER event
 	// debugging
-	void     sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum, uint16_t pres, uint32_t lux, uint32_t data0, uint32_t data1);
+	void     sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum, uint16_t pres, uint32_t lux);
 	void     sendPeerRAW(uint8_t cnl, uint8_t type, uint8_t *data, uint8_t len);		// send event to all peers listed in the peers database by channel, type specifies the type of the message, data and len delivers the content of the event
 	void     send_ACK(void);															// , ACK sending function
 	void     send_NACK(void);															// , NACK sending function

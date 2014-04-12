@@ -78,8 +78,6 @@ class SHT10_BMP085_TSL2561 {
 		uint8_t  tHum;
 		uint16_t tPres;
 		uint32_t tLux;
-		uint32_t tData0;
-		uint32_t tData1;
 
 		boolean gain;    // Gain setting, 0 = X1, 1 = X16;
 

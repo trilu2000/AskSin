@@ -76,12 +76,7 @@ void SHT10_BMP085_TSL2561::poll_measure(void) {
 	tLux = tsl2561->readBrightness(data0, data1) * 100;
 
 	if (tsl2561->getError()) {
-		tLux = 0;
-		tData0 = 0;
-		tData1 = 0;
-	} else {
-		tData0 = (uint32_t)data0;
-		tData1 = (uint32_t)data1;
+		tLux = 100001;
 	}
 
 //	counter++;
@@ -111,11 +106,7 @@ void SHT10_BMP085_TSL2561::poll_transmit(void) {
 
 	nAction = 'm';																// next time we want to measure again
 
-	// transmit code
-//	hm->sendPeerWEATHER(regCnl,tTemp,tHum,tPres,tLux				);			// send out the weather event
-
-	// debugging
-	hm->sendPeerWEATHER(regCnl, tTemp, tHum, tPres, tLux, tData0, tData1);		// send out the weather event
+	hm->sendPeerWEATHER(regCnl, tTemp, tHum, tPres, tLux);						// send out the weather event
 }
 
 uint32_t SHT10_BMP085_TSL2561::calcSendSlot(void) {

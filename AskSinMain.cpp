@@ -426,8 +426,8 @@ void     HM::sendPeerREMOTE(uint8_t cnl, uint8_t longPress, uint8_t lowBat) {
 }
 //void     HM::sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum, uint16_t pres, uint32_t lux) {
 // debugging
-void     HM::sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum, uint16_t pres, uint32_t lux, uint32_t data0, uint32_t data1) {
-	// "70"          => { txt => "WeatherEvent", params => {
+
+void     HM::sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum, uint16_t pres, uint32_t lux) {
 	//	TEMP     => '00,4,$val=((hex($val)&0x3FFF)/10)*((hex($val)&0x4000)?-1:1)',
 	//	HUM      => '04,2,$val=(hex($val))', } },
 
@@ -435,59 +435,37 @@ void     HM::sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum, uint16_t p
 	// l> 0C 0A B4  70    1F A6 5C   1F B7 4A   01 01   01 (l:13)(160188)
 	// l> 0B 0B B4  40    1F A6 5C   1F B7 4A 41 02 (l:12)(169121)
 
-	pevt.t = cnlDefbyPeer(cnl);															// get the index number in cnlDefType
+	pevt.t = cnlDefbyPeer(cnl);													// get the index number in cnlDefType
 	if (pevt.t == NULL) return;
-	//Serial << "se\n";
 	
-	pevt.type = 0x70;																	// we want to send a weather event
-	pevt.reqACK = 0x20;																	// we like to get an ACK
+	pevt.type = 0x70;															// 0x70 -> frame-id for weather event
+	pevt.reqACK = 0x20;															// we like to get an ACK
 
-	pevt.data[0] = (temp >> 8) & 0xFF | battery.state << 7;
+	pevt.data[0] = (temp >> 8) & 0xFF | battery.state << 7;						// temperature data
 	pevt.data[1] = temp & 0xFF;
-	pevt.data[2] = hum;
 
-	pevt.data[3] = (pres >> 8) & 0xFF;
+	pevt.data[2] = hum;															// humidity
+
+	pevt.data[3] = (pres >> 8) & 0xFF;											// air pressure
 	pevt.data[4] = pres & 0xFF;
 
-	pevt.data[5] = (lux >> 24) & 0xFFFFFF;
+	pevt.data[5] = (lux >> 24) & 0xFFFFFF;										// luminosity
 	lux = lux & 0xFFFFFF;
 	pevt.data[6] = (lux >> 16) & 0xFFFF;
 	lux = lux & 0xFFFF;
 	pevt.data[7] = (lux >> 8) & 0xFF;
 	pevt.data[8] = lux & 0xFF;
 
-	// battery voltage
-	pevt.data[9] = (battery.voltage >> 8) & 0xFF;
+	pevt.data[9] = (battery.voltage >> 8) & 0xFF;								// battery voltage
 	pevt.data[10] = battery.voltage & 0xFF;
 
-// debugging start (data0 and data1 from luminosity sensor
-	pevt.data[11] = (data0 >> 24) & 0xFFFFFF;
-	data0 = data0 & 0xFFFFFF;
-	pevt.data[12] = (data0 >> 16) & 0xFFFF;
-	data0 = data0 & 0xFFFF;
-	pevt.data[13] = (data0 >> 8) & 0xFF;
-	pevt.data[14] = data0 & 0xFF;
-
-	pevt.data[15] = (data1 >> 24) & 0xFFFFFF;
-	data1 = data1 & 0xFFFFFF;
-	pevt.data[16] = (data1 >> 16) & 0xFFFF;
-	data1 = data1 & 0xFFFF;
-	pevt.data[17] = (data1 >> 8) & 0xFF;
-	pevt.data[18] = data1 & 0xFF;
-// debugging stop
-
-//	if (pres) pevt.len = 5;																// 5 bytes payload with pressure
-//	else pevt.len = 3;																	// if pressure is empty, then we have only3 bytes
-	
-//	pevt.len = 9;
-	// debugging
-	pevt.len = 19;
+	pevt.len = 11;
 
 	pevt.msgCnt++;
 	
-	pevt.act = 1;																		// active, 1 = yes, 0 = no
-	//Serial << "remote; cdpIdx:" << pevt.cdpIdx << ", type:" << pHexB(pevt.type) << ", rACK:" << pHexB(pevt.reqACK) << ", msgCnt:" << pevt.msgCnt << ", data:" << pHex(pevt.data,pevt.len) << '\n';
+	pevt.act = 1;																// active, 1 = yes, 0 = no
 }
+
 void     HM::sendPeerRAW(uint8_t cnl, uint8_t type, uint8_t *data, uint8_t len) {
 	// validate the input, and fill the respective variables in the struct
 	// message handling is taken from send_peer_poll
