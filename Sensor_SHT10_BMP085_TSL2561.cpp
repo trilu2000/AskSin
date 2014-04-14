@@ -74,20 +74,7 @@ void SHT10_BMP085_TSL2561::poll_measure(void) {
 
 	unsigned int data0, data1;
 	tLux = tsl2561->readBrightness(data0, data1) * 100;
-
-	if (tsl2561->getError()) {
-		tLux = 100001;
-	}
-
-//	counter++;
-//	Serial.print("Counter: "); Serial.println(counter);
-//	Serial.print ("resetReason: "); Serial.println (resetReason); _delay_ms(10);
-
-	// Hack, Restart the Code each 256 cycles
-	// ToDo: why the avr freez after some time without this hack?
-//	if (counter > 200) {
-//		asm volatile ("jmp 0");
-//	}
+	tLux = tsl2561->getError() ? 10000100 : tLux;								// send 100.001 Lux if no sensor available
 }
 
 
