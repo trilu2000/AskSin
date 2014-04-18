@@ -73,10 +73,9 @@ void SHT10_BMP085_TSL2561::poll_measure(void) {
 	}
 
 	unsigned int data0, data1;
-	tLux = tsl2561->readBrightness(data0, data1) * 100;
-	tLux = tsl2561->getError() ? 10000100 : tLux;								// send 100.001 Lux if no sensor available
+	tLux = tsl2561->readBrightness(data0, data1) * 100;							// send 65537 Lux if sensor saturated
+	tLux = tsl2561->getError() ? 6553800 : tLux;								// send 65538 Lux if no sensor available
 }
-
 
 void SHT10_BMP085_TSL2561::poll_transmit(void) {
 	unsigned long mils = millis();

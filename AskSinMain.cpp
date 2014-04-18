@@ -534,7 +534,7 @@ void     HM::recv_poll(void) {															// handles the receive objects
 	}
 
 	// is the message from a valid sender (pair or peer), if not then exit - takes ~2ms
-	if ((isPairKnown(recv_reID) == 0) && (isPeerKnown(recv_reID) == 0)) {				// check against peers
+	if (isPairKnown(recv_reID) == 0) {													// check against peers
 		#if defined(AS_DBG)																// some debug message
 			Serial << "pair/peer did not fit, exit\n";
 		#endif
