@@ -533,6 +533,9 @@ void     HM::recv_poll(void) {															// handles the receive objects
 		return;
 	}
 
+	// ToDo: Workaround for pairing problems with CCU. We should fix this
+	// x:1A CA E5, y: 16 30 83
+/*
 	// is the message from a valid sender (pair or peer), if not then exit - takes ~2ms
 	if (isPairKnown(recv_reID) == 0) {													// check against peers
 		#if defined(AS_DBG)																// some debug message
@@ -542,6 +545,7 @@ void     HM::recv_poll(void) {															// handles the receive objects
 		recv.data[0] = 0;																// clear receive string
 		return;
 	}
+*/
 
 	// check if it was a repeated message, delete while already received
 	if (recv_isRpt) {																	// check repeated flag

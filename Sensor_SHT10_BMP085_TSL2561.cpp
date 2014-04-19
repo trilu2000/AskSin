@@ -87,8 +87,6 @@ void SHT10_BMP085_TSL2561::poll_transmit(void) {
 		nTime = mils + (calcSendSlot() * 250) - measureTime;					// calculate the next send slot by multiplying with 250ms to get the time in millis
 	}
 	
-	// hoffmann
-//	nTime = mils + 5000;
 
 	nAction = 'm';																// next time we want to measure again
 
