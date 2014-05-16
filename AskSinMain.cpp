@@ -22,23 +22,23 @@ uint8_t bCast[] = {0,0,0,0};													// broad cast address
 //  public://--------------------------------------------------------------------------------------------------------------
 //- homematic public protocol functions
 void     HM::init(void) {
-#ifdef AS_DBG || AS_DBG_Explain
-	Serial.begin(57600);																// serial setup
-	//Serial << F("AskSin debug enabled...\n");											// ...and some information
-#endif
+	#ifdef AS_DBG || AS_DBG_Explain
+		Serial.begin(57600);													// serial setup
+		//Serial << F("AskSin debug enabled...\n");								// ...and some information
+	#endif
 
 	// register handling setup
-	prepEEprom();																		// check the eeprom for first time boot, prepares the eeprom and loads the defaults
+	prepEEprom();																// check the eeprom for first time boot, prepares the eeprom and loads the defaults
 	loadRegs();
 
 	// communication setup
-	cc.init();																			// init the TRX868 module
-	intGDO0.nbr = cc.gdo0Int;															// make the gdo0 interrupt public
-	attachInterrupt(intGDO0.nbr,isrGDO0,FALLING);										// attach the interrupt
+	cc.init();																	// init the TRX868 module
+	intGDO0.nbr = cc.gdo0Int;													// make the gdo0 interrupt public
+	attachInterrupt(intGDO0.nbr,isrGDO0,FALLING);								// attach the interrupt
 
-	memcpy_P(hmId, &dParm.p[17], 3);													// initialize hmId
+	memcpy_P(hmId, &dParm.p[17], 3);											// initialize hmId
 
-	statusLed.setHandle(this);															// make the main class visible for status led
+	statusLed.setHandle(this);													// make the main class visible for status led
 	hm.stayAwake(1000);
 }
 
