@@ -17,14 +17,13 @@
 #include "utility/Serial.h"
 #include "utility/Fastdelegate.h"
 
-#define MyClassName Dummy																// module name as macro to overcome the problem of renaming functions all the time
 #define DM_DBG																			// debug message flag
 
 const uint8_t peerOdd[] =    {};														// default settings for list3 or list4
 const uint8_t peerEven[] =   {};
 const uint8_t peerSingle[] = {};
 
-class MyClassName {
+class Dummy {
   //- user code here ------------------------------------------------------------------------------------------------------
   public://----------------------------------------------------------------------------------------------------------------
   protected://-------------------------------------------------------------------------------------------------------------

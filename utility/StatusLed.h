@@ -69,6 +69,8 @@ class StatusLed {
 
 	void poll(void);
 	void setHandle(void *ptr);
+	void on(uint8_t ledNum);
+	void off(uint8_t ledNum);
 
   private://-------------------------------------------------------------------------------------------------------------
 	uint8_t  pin[2];
@@ -79,12 +81,9 @@ class StatusLed {
 
 	/* blink counter */
 	uint8_t  bCnt[2];
-
 	uint32_t nTime[2];
 
-
-	void on(uint8_t ledNum);
-	void off(uint8_t ledNum);
+	void onOff(uint8_t mode, uint8_t ledNum);
 	void toggle(uint8_t ledNum);
 };
 

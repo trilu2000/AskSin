@@ -1,78 +1,111 @@
-//- -----------------------------------------------------------------------------------------------------------------------
-// AskSin driver implementation
-// 2013-08-03 <horst@diebittners.de> Creative Commons - http://creativecommons.org/licenses/by-nc-sa/3.0/de/
-//- -----------------------------------------------------------------------------------------------------------------------
-//- SHT10 and BMP085 Sensor class -----------------------------------------------------------------------------------------
-//- -----------------------------------------------------------------------------------------------------------------------
-#include "Sensor_SHT10_BMP085.h"
+/**
+ * SHT10, BMP085, TSL2561 Sensor class
+ *
+ * (c) 2014 Creative Commons - http://creativecommons.org/licenses/by-nc-sa/3.0/de/
+ * Author: Horst Bittner <horst@diebittners.de>
+ *         Dirk Hoffmann dirk@fhem.forum
+ */
+#include "Sensor_SHT10_BMP085_TSL2561.h"
 extern "C" {
 	#include <Wire.h>
 	#include <twi.h>
 }
 
 //- user code here --------------------------------------------------------------------------------------------------------
-void MyClassName::config(uint8_t data, uint8_t sck, uint16_t timing, Sensirion *tPtr, BMP085 *pPtr, uint16_t Altidude) {
+void SHT10_BMP085_TSL2561::config(uint8_t data, uint8_t sck, uint16_t timing, Sensirion *tPtr, BMP085 *pPtr, TSL2561 *lPtr) {
 	tTiming = timing;
-	nTime = millis() + 1000;															// set the first time we like to measure
+	nTime = millis() + 1000;													// set the first time we like to measure
 	nAction = 'm';
 
-	sh = tPtr;
-	sh->config(data,sck);																	// configure the sensor
-	sh->writeSR(LOW_RES);																// low resolution is enough
+	sht10 = tPtr;
+	sht10->config(data,sck);													// configure the sensor
+	sht10->writeSR(LOW_RES);													// low resolution is enough
 
-	if (pPtr != NULL) {																	// only if there is a valid module defined
-		bm = pPtr;
-		tAlt = Altidude;
+	if (pPtr != NULL) {															// only if there is a valid module defined
+		bm180 = pPtr;
 	}
+
+	if (lPtr != NULL) {															// only if there is a valid module defined
+		tsl2561 = lPtr;
+	}
+
+	gain = 0;
+	tsl2561->setPowerUp();
+	tsl2561->setTiming(gain, INTEGATION_TIME_14);
 }
 
-void MyClassName::poll_measure(void) {
-	nTime += measureTime;																// add the 500ms measurement takes to transmit in time
+void SHT10_BMP085_TSL2561::poll_measure(void) {
+	nTime += measureTime;														// add the 500ms measurement takes to transmit in time
 	nAction = 't';
+
+	// Disable I2C
+	TWCR = 0;
 
 	// measurement code
 	// http://www.sensirion.com/fileadmin/user_upload/customers/sensirion/Dokumente/Humidity/Sensirion_Humidity_SHT1x_Datasheet_V5.pdf
-	
+
 	uint16_t rawData;
-	sh->measTemp(&rawData);
-	
-	if (rawData < 990) tTemp = (rawData*0.4f-396)*-1+0x4000;
-	else tTemp = rawData*0.4f-396;
-	//Serial << "raw: " << rawData << "  mt: " << tTemp << '\n';
-	
-	sh->measHumi(&rawData);
-	tHum = -2.0468f + 0.5872f * rawData + -4.0845E-4f * rawData * rawData;
-	tHum = ((float)tTemp/10 - 25) * (float)(0.01f + 0.00128f * rawData) + tHum;
-	//Serial << "raw: " << rawData << "  mH: " << tHum << '\n';
-	
-	if (bm != NULL) {																	// only if we have a valid module
-		bm->begin(0);
-		tPres = (uint16_t)((bm->readPressure()/100)/pow(1-(tAlt/44330.0),5.255));		// calculate pressure on sea level
-		TWCR = 0;
-		//Serial << " p: " << tPres << '\n';
+	uint8_t shtError = sht10->measTemp(&rawData);
+	// Measure temperature and humidity from Sensor only if no error
+	if (!shtError) {
+		if (rawData < 990) tTemp = (rawData*0.4f-396)*-1+0x4000;
+		else tTemp = rawData*0.4f-396;
+
+		sht10->measHumi(&rawData);
+		tHum = -2.0468f + 0.5872f * rawData + -4.0845E-4f * rawData * rawData;
+		tHum = ((float)tTemp/10 - 25) * (float)(0.01f + 0.00128f * rawData) + tHum;
+		//	Serial << "raw: " << rawData << "  mH: " << tHum << '\n';
 	}
-}
-void MyClassName::poll_transmit(void) {
-	if (tTiming) nTime = millis() + tTiming;											// there is a given timing
-	else nTime = millis() + (calcSendSlot() * 250) - measureTime;						// calculate the next send slot by multiplying with 250ms to get the time in millis
 	
-	nAction = 'm';																		// next time we want to measure again
-	// transmit code
-	hm->sendPeerWEATHER(regCnl,tTemp,tHum,tPres);										// send out the weather event
+	if (bm180 != NULL) {														// only if we have a valid module
+		bm180->begin(0);
+		tPres = (uint16_t)(bm180->readPressure() / 100);
+
+		if (tPres > 300) {
+			// get temperature from bmp180 if sht10 no present
+			if (shtError) {
+				// temp from BMP180
+				tTemp = bm180->readTemperature() * 10;
+			}
+		} else {
+			tPres = 0;
+		}
+	}
+
+	unsigned int data0, data1;
+	tLux = tsl2561->readBrightness(data0, data1) * 100;							// send 65537 Lux if sensor saturated
+	tLux = tsl2561->getError() ? 6553800 : tLux;								// send 65538 Lux if no sensor available
 }
-uint32_t MyClassName::calcSendSlot(void) {
+
+void SHT10_BMP085_TSL2561::poll_transmit(void) {
+	unsigned long mils = millis();
+
+	if (tTiming) {
+		nTime = mils + tTiming;													// there is a given timing
+	}
+	else {
+		nTime = mils + (calcSendSlot() * 250) - measureTime;					// calculate the next send slot by multiplying with 250ms to get the time in millis
+	}
+	
+
+	nAction = 'm';																// next time we want to measure again
+
+	hm->sendPeerWEATHER(regCnl, tTemp, tHum, tPres, tLux);						// send out the weather event
+}
+
+uint32_t SHT10_BMP085_TSL2561::calcSendSlot(void) {
 	uint32_t result = (((hm->getHMID() << 8) | hm->getMsgCnt()) * 1103515245 + 12345) >> 16;
 	return (result & 0xFF) + 480;
 }
 
 //- mandatory functions for every new module to communicate within HM protocol stack --------------------------------------
-void MyClassName::configCngEvent(void) {
+void SHT10_BMP085_TSL2561::configCngEvent(void) {
 	// it's only for information purpose while something in the channel config was changed (List0/1 or List3/4)
 	#ifdef DM_DBG
 	Serial << F("configCngEvent\n");
 	#endif
 }
-void MyClassName::pairSetEvent(uint8_t *data, uint8_t len) {
+void SHT10_BMP085_TSL2561::pairSetEvent(uint8_t *data, uint8_t len) {
 	// we received a message from master to set a new value, typical you will find three bytes in data
 	// 1st byte = value; 2nd byte = ramp time; 3rd byte = duration time;
 	// after setting the new value we have to send an enhanced ACK (<- 0E E7 80 02 1F B7 4A 63 19 63 01 01 C8 00 54)
@@ -85,7 +118,7 @@ void MyClassName::pairSetEvent(uint8_t *data, uint8_t len) {
 		
 	hm->sendACKStatus(regCnl,modStat,0);
 }
-void MyClassName::pairStatusReq(void) {
+void SHT10_BMP085_TSL2561::pairStatusReq(void) {
 	// we received a status request, appropriate answer is an InfoActuatorStatus message
 	#ifdef DM_DBG
 	Serial << F("pairStatusReq\n");
@@ -93,7 +126,7 @@ void MyClassName::pairStatusReq(void) {
 	
 	hm->sendInfoActuatorStatus(regCnl, modStat, 0);
 }
-void MyClassName::peerMsgEvent(uint8_t type, uint8_t *data, uint8_t len) {
+void SHT10_BMP085_TSL2561::peerMsgEvent(uint8_t type, uint8_t *data, uint8_t len) {
 	// we received a peer event, in type you will find the marker if it was a switch(3E), remote(40) or sensor(41) event
 	// appropriate answer is an ACK
 	#ifdef DM_DBG
@@ -103,21 +136,33 @@ void MyClassName::peerMsgEvent(uint8_t type, uint8_t *data, uint8_t len) {
 	hm->send_ACK();
 }
 
-void MyClassName::poll(void) {
-	// just polling, as the function name said
-	if ((nTime == 0) || (nTime > millis())) return;										// check if it is time to jump in
+void SHT10_BMP085_TSL2561::poll(void) {
+	unsigned long mils = millis();
 
-	if      (nAction == 'm') poll_measure();											// measure
-	else if (nAction == 't') poll_transmit();											// transmit
+	// just polling, as the function name said
+	if ((nTime == 0) || (nTime > mils)) {										// check if it is time to jump in
+		return;
+	}
+
+	if (nAction == 'm') {
+		poll_measure();															// measure
+
+	} else if (nAction == 't') {
+		poll_transmit();														// transmit
+	}
+}
+
+void SHT10_BMP085_TSL2561::setResetReason(byte _resetReason) {
+	resetReason = _resetReason;
 }
 
 //- predefined, no reason to touch ----------------------------------------------------------------------------------------
-void MyClassName::regInHM(uint8_t cnl, HM *instPtr) {
+void SHT10_BMP085_TSL2561::regInHM(uint8_t cnl, HM *instPtr) {
 	hm = instPtr;																		// set pointer to the HM module
-	hm->regCnlModule(cnl,s_mod_dlgt(this,&MyClassName::hmEventCol),(uint16_t*)&ptrMainList,(uint16_t*)&ptrPeerList);
+	hm->regCnlModule(cnl,s_mod_dlgt(this,&SHT10_BMP085_TSL2561::hmEventCol),(uint16_t*)&ptrMainList,(uint16_t*)&ptrPeerList);
 	regCnl = cnl;																		// stores the channel we are responsible fore
 }
-void MyClassName::hmEventCol(uint8_t by3, uint8_t by10, uint8_t by11, uint8_t *data, uint8_t len) {
+void SHT10_BMP085_TSL2561::hmEventCol(uint8_t by3, uint8_t by10, uint8_t by11, uint8_t *data, uint8_t len) {
 	if       (by3 == 0x00)                    poll();
 	else if ((by3 == 0x01) && (by11 == 0x06)) configCngEvent();
 	else if ((by3 == 0x11) && (by10 == 0x02)) pairSetEvent(data, len);
@@ -126,7 +171,7 @@ void MyClassName::hmEventCol(uint8_t by3, uint8_t by10, uint8_t by11, uint8_t *d
 	else if  (by3 >= 0x3E)                    peerMsgEvent(by3, data, len);
 	else return;
 }
-void MyClassName::peerAddEvent(uint8_t *data, uint8_t len) {
+void SHT10_BMP085_TSL2561::peerAddEvent(uint8_t *data, uint8_t len) {
 	// we received an peer add event, which means, there was a peer added in this respective channel
 	// 1st byte and 2nd byte shows the peer channel, 3rd and 4th byte gives the peer index
 	// no need for sending an answer, but we could set default data to the respective list3/4

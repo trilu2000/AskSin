@@ -30,8 +30,8 @@ const uint8_t peerSingle[] = {
 
 //- user code here --------------------------------------------------------------------------------------------------------
 // public function for setting the module
-//void MyClassName::config(uint8_t type, uint8_t pinOn, uint8_t pinOff, uint8_t minDelay, uint8_t randomDelay) {
-void MyClassName::config(void Init(), void Switch(uint8_t), uint8_t minDelay, uint8_t randomDelay) {
+//void Relay::config(uint8_t type, uint8_t pinOn, uint8_t pinOff, uint8_t minDelay, uint8_t randomDelay) {
+void Relay::config(void Init(), void Switch(uint8_t), uint8_t minDelay, uint8_t randomDelay) {
 	// store config settings in class
 	//hwType = type;																// 0 indicates a monostable, 1 a bistable relay
 	//hwPin[0] = pinOn;															// first byte for on, second for off
@@ -53,7 +53,7 @@ void MyClassName::config(void Init(), void Switch(uint8_t), uint8_t minDelay, ui
 }
 
 // private functions for triggering some action
-void MyClassName::trigger11(uint8_t val, uint8_t *rampTime, uint8_t *duraTime) {
+void Relay::trigger11(uint8_t val, uint8_t *rampTime, uint8_t *duraTime) {
 	// {no=>0,dlyOn=>1,on=>3,dlyOff=>4,off=>6}
 
 	rTime = (uint16_t)rampTime[0]<<8 | (uint16_t)rampTime[1];					// store ramp time
@@ -71,7 +71,7 @@ void MyClassName::trigger11(uint8_t val, uint8_t *rampTime, uint8_t *duraTime) {
 
 	hm->sendACKStatus(regCnl,getRlyStat(),getMovStat());						// send an status ACK
 }
-void MyClassName::trigger40(uint8_t lngIn, uint8_t cnt) {
+void Relay::trigger40(uint8_t lngIn, uint8_t cnt) {
 	s_srly *s3 = ptrPeerList;													// copy list3 to pointer
 
 	// check for repeated message
@@ -122,14 +122,14 @@ void MyClassName::trigger40(uint8_t lngIn, uint8_t cnt) {
 
 	hm->sendACKStatus(regCnl,getRlyStat(),getMovStat());
 }
-void MyClassName::trigger41(uint8_t lngIn, uint8_t val) {
+void Relay::trigger41(uint8_t lngIn, uint8_t val) {
 	lastTrig = 41;																// set trigger
 	rlyTime = millis();															// changed some timers, activate poll function
 }
 
 
 // private functions for setting relay and getting current status
-void MyClassName::adjRly(uint8_t tValue) {
+void Relay::adjRly(uint8_t tValue) {
 	if (curStat == nxtStat) return;												// nothing to do
 	tSwitch(tValue);
 	
@@ -142,12 +142,12 @@ void MyClassName::adjRly(uint8_t tValue) {
 	cbsTme = millis() + ((uint32_t)mDel*1000) + random(((uint32_t)rDel*1000));	// set the timer for sending the status
 	//Serial << "cbsT:" << cbsTme << '\n';
 }
-uint8_t MyClassName::getMovStat(void) {
+uint8_t Relay::getMovStat(void) {
 	// curStat could be {no=>0,dlyOn=>1,on=>3,dlyOff=>4,off=>6}
 	if ((nxtStat == 1) || (nxtStat == 4)) return 0x40;
 	else return 0x00;
 }
-uint8_t MyClassName::getRlyStat(void) {
+uint8_t Relay::getRlyStat(void) {
 	// curStat could be {no=>0,dlyOn=>1,on=>3,dlyOff=>4,off=>6}
 	if ((nxtStat == 6) || (nxtStat == 1)) return 0x00;
 	else return 0xC8;
@@ -155,13 +155,13 @@ uint8_t MyClassName::getRlyStat(void) {
 
 
 //- mandatory functions for every new module to communicate within HM protocol stack --------------------------------------
-void MyClassName::configCngEvent(void) {
+void Relay::configCngEvent(void) {
 	// it's only for information purpose while something in the channel config was changed (List0/1 or List3/4)
 	#ifdef DM_DBG
 	Serial << F("configCngEvent\n");
 	#endif
 }
-void MyClassName::pairSetEvent(uint8_t *data, uint8_t len) {
+void Relay::pairSetEvent(uint8_t *data, uint8_t len) {
 	// we received a message from master to set a new value, typical you will find three bytes in data
 	// 1st byte = value; 2nd byte = ramp time; 3rd byte = duration time;
 	// after setting the new value we have to send an enhanced ACK (<- 0E E7 80 02 1F B7 4A 63 19 63 01 01 C8 00 54)
@@ -174,7 +174,7 @@ void MyClassName::pairSetEvent(uint8_t *data, uint8_t len) {
 	
 	//hm->sendACKStatus(regCnl,modStat,0);
 }
-void MyClassName::pairStatusReq(void) {
+void Relay::pairStatusReq(void) {
 	// we received a status request, appropriate answer is an InfoActuatorStatus message
 	#ifdef DM_DBG
 	Serial << F("pairStatusReq\n");
@@ -182,7 +182,7 @@ void MyClassName::pairStatusReq(void) {
 	
 	hm->sendInfoActuatorStatus(regCnl, getRlyStat(), getMovStat());
 }
-void MyClassName::peerMsgEvent(uint8_t type, uint8_t *data, uint8_t len) {
+void Relay::peerMsgEvent(uint8_t type, uint8_t *data, uint8_t len) {
 	// we received a peer event, in type you will find the marker if it was a switch(3E), remote(40) or sensor(41) event
 	// appropriate answer is an ACK
 	#ifdef DM_DBG
@@ -192,7 +192,7 @@ void MyClassName::peerMsgEvent(uint8_t type, uint8_t *data, uint8_t len) {
 	//hm->send_ACK();
 }
 
-void MyClassName::poll(void) {
+void Relay::poll(void) {
 	// just polling, as the function name said
 	if ((cbsTme != 0) && (millis() > cbsTme)) {									// check if we have to send a status message
 		hm->sendInfoActuatorStatus(regCnl, getRlyStat(), 0);					// send status
@@ -248,12 +248,12 @@ void MyClassName::poll(void) {
 }
 
 //- predefined, no reason to touch ----------------------------------------------------------------------------------------
-void MyClassName::regInHM(uint8_t cnl, HM *instPtr) {
+void Relay::regInHM(uint8_t cnl, HM *instPtr) {
 	hm = instPtr;																		// set pointer to the HM module
-	hm->regCnlModule(cnl,s_mod_dlgt(this,&MyClassName::hmEventCol),(uint16_t*)&ptrMainList,(uint16_t*)&ptrPeerList);
+	hm->regCnlModule(cnl,s_mod_dlgt(this,&Relay::hmEventCol),(uint16_t*)&ptrMainList,(uint16_t*)&ptrPeerList);
 	regCnl = cnl;																		// stores the channel we are responsible fore
 }
-void MyClassName::hmEventCol(uint8_t by3, uint8_t by10, uint8_t by11, uint8_t *data, uint8_t len) {
+void Relay::hmEventCol(uint8_t by3, uint8_t by10, uint8_t by11, uint8_t *data, uint8_t len) {
 	if  (by3 == 0x00)                    poll();
 	if ((by3 == 0x01) && (by11 == 0x06)) configCngEvent();
 	if ((by3 == 0x11) && (by10 == 0x02)) pairSetEvent(data, len);
@@ -264,7 +264,7 @@ void MyClassName::hmEventCol(uint8_t by3, uint8_t by10, uint8_t by11, uint8_t *d
 	if ((by3 == 0x11) && (by10 == 0x02)) trigger11(data[0], &data[1], &data[3]);	
 	if  (by3 == 0x40)                    trigger40((by10 & 0x40), data[0]);
 }
-void MyClassName::peerAddEvent(uint8_t *data, uint8_t len) {
+void Relay::peerAddEvent(uint8_t *data, uint8_t len) {
 	// we received an peer add event, which means, there was a peer added in this respective channel
 	// 1st byte and 2nd byte shows the peer channel, 3rd and 4th byte gives the peer index
 	// no need for sending an answer, but we could set default data to the respective list3/4

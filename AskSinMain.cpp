@@ -8,90 +8,117 @@
 #include "AskSinMain.h"
 
 //- some macros and definitions -------------------------------------------------------------------------------------------
-#define _pgmB pgm_read_byte																// short hand for PROGMEM read
+#define _pgmB pgm_read_byte														// short hand for PROGMEM read
 #define _pgmW pgm_read_word
-#define maxPayload 16																	// defines the length of send_conf_poll and send_peer_poll
+#define maxPayload 16															// defines the length of send_conf_poll and send_peer_poll
 //- -----------------------------------------------------------------------------------------------------------------------
 
 //- -----------------------------------------------------------------------------------------------------------------------
 //- Homematic communication functions -------------------------------------------------------------------------------------
 //- -----------------------------------------------------------------------------------------------------------------------
-s_intGDO0 intGDO0;																		// structure to store interrupt number and pointer to active AskSin class instance
-uint8_t bCast[] = {0,0,0,0};															// broad cast address
+s_intGDO0 intGDO0;																// structure to store interrupt number and pointer to active AskSin class instance
+uint8_t bCast[] = {0,0,0,0};													// broad cast address
 
 //  public://--------------------------------------------------------------------------------------------------------------
 //- homematic public protocol functions
 void     HM::init(void) {
-#ifdef AS_DBG || AS_DBG_Explain
-	Serial.begin(57600);																// serial setup
-	//Serial << F("AskSin debug enabled...\n");											// ...and some information
-#endif
+	#ifdef AS_DBG || AS_DBG_Explain
+		Serial.begin(57600);													// serial setup
+		//Serial << F("AskSin debug enabled...\n");								// ...and some information
+	#endif
 
 	// register handling setup
-	prepEEprom();																		// check the eeprom for first time boot, prepares the eeprom and loads the defaults
+	prepEEprom();																// check the eeprom for first time boot, prepares the eeprom and loads the defaults
 	loadRegs();
 
 	// communication setup
-	cc.init();																			// init the TRX868 module
-	intGDO0.nbr = cc.gdo0Int;															// make the gdo0 interrupt public
-	intGDO0.ptr = this;																	// make the address of this instance public
-	attachInterrupt(intGDO0.nbr,isrGDO0,FALLING);										// attach the interrupt
+	cc.init();																	// init the TRX868 module
+	intGDO0.nbr = cc.gdo0Int;													// make the gdo0 interrupt public
+	attachInterrupt(intGDO0.nbr,isrGDO0,FALLING);								// attach the interrupt
 
-	statusLed.setHandle(this);															// make the main class visible for status led
+	memcpy_P(hmId, &dParm.p[17], 3);											// initialize hmId
+
+	statusLed.setHandle(this);													// make the main class visible for status led
 	hm.stayAwake(1000);
 }
-void     HM::recvInterrupt(void) {
-	if (hm.cc.receiveData(hm.recv.data)) {												// is something in the receive string
-		hm.hm_dec(hm.recv.data);														// decode the content
+
+void     HM::poll(void) {														// task scheduler
+
+	if (int0_flag)        cc1101Recv_poll();
+	if (recv.data[0] > 0) recv_poll();											// trace the received string and decide what to do further
+	if (send.counter > 0) send_poll();											// something to send in the buffer?
+	if (conf.act > 0)     send_conf_poll();										// some config to be send out
+	if (pevt.act > 0)     send_peer_poll();										// send peer events
+
+	power_poll();
+	module_poll();																// poll the registered channel modules
+	statusLed.poll();															// poll the status leds
+	battery.poll();																// poll the battery check
+}
+
+void     HM::cc1101Recv_poll(void) {
+	detachInterrupt(intGDO0.nbr);												// switch interrupt off
+
+	if (hm.cc.receiveData(hm.recv.data)) {										// is something in the receive string
+		hm.hm_dec(hm.recv.data);												// decode the content
 	}
 
-}
-void     HM::poll(void) {																// task scheduler
-	if (recv.data[0] > 0) recv_poll();													// trace the received string and decide what to do further
-	if (send.counter > 0) send_poll();													// something to send in the buffer?
-	if (conf.act > 0) send_conf_poll();													// some config to be send out
-	if (pevt.act > 0) send_peer_poll();													// send peer events
-	power_poll();
-	module_poll();																		// poll the registered channel modules
-	statusLed.poll();																	// poll the status leds
-	battery.poll();																		// poll the battery check
+	int0_flag = 0;
+	attachInterrupt(intGDO0.nbr,isrGDO0,FALLING);								// switch interrupt on again
 }
 
 void     HM::send_out(void) {
-	if (bitRead(send.data[2],5)) send.retries = dParm.maxRetr;							// check for ACK request and set max retries counter
-	else send.retries = 1;																// otherwise send only one time
+	if (bitRead(send.data[2],5)) {
+		send.retries = dParm.maxRetr;											// check for ACK request and set max retries counter
+	} else {
+		send.retries = 1;														// otherwise send only one time
+	}
 
-	send.burst = bitRead(send.data[2],4);												// burst necessary?
+	send.burst = bitRead(send.data[2],4);										// burst necessary?
 
-	if (memcmp(&send.data[7], dParm.HMID, 3) == 0) {									// if the message is addressed to us,
-		memcpy(recv.data,send.data,send.data[0]+1);										// then copy in receive buffer. could be the case while sending from serial console
-		send.counter = 0;																// no need to fire
-	} else {																			// it's not for us, so encode and put in send queue
+	if (memcmp(&send.data[7], hmId, 3) == 0) {									// if the message is addressed to us,
+		memcpy(recv.data,send.data,send.data[0]+1);								// then copy in receive buffer. could be the case while sending from serial console
+		send.counter = 0;														// no need to fire
 
-		send.counter = 1;																// and fire
+	} else {																	// it's not for us, so encode and put in send queue
+		send.counter = 1;														// and fire
 		send.timer = 0;
 	}
 }
+
+/**
+ * Perform a device reset.
+ * At reset, all eeprom data was cleared.
+ */
 void     HM::reset(void) {
-	setEeWo(ee[0].magicNr,0);															// clear magic byte in eeprom and step in initRegisters
-	prepEEprom();																		// check the eeprom for first time boot, prepares the eeprom and loads the defaults
+	setEeWo(ee[0].magicNr,0);													// clear magic byte in eeprom and step in initRegisters
+	prepEEprom();																// check the eeprom for first time boot, prepares the eeprom and loads the defaults
 	loadRegs();
 
-	statusLed.set(STATUSLED_2, STATUSLED_MODE_BLINKSFAST, 5);							// blink LED2 5 times short
+	statusLed.set(STATUSLED_2, STATUSLED_MODE_BLINKSFAST, 5);					// blink LED2 5 times short
 }
+
+/**
+ * Set the power mode of the device
+ *
+ * There are 3 power modes for the TRX868 module
+ * TX mode will switched on while something is in the send queue:
+ *
+ * 0 - RX mode enabled by default, take approx 17ma
+ *
+ * 1 - RX is in burst mode, RX will be switched on every 250ms to check if there is a carrier signal
+ *     if yes - RX will stay enabled until timeout is reached, prolongation of timeout via receive function seems not necessary
+ * 			to be able to receive an ACK, RX mode should be switched on by send function
+ *     if no  - RX will go in idle mode and wait for the next carrier sense check
+ *
+ * 2 - RX is off by default, TX mode is enabled while sending something
+ *     configuration mode is required in this setup to be able to receive at least pairing and config request strings
+ *     should be realized by a 30 sec timeout function for RX mode
+ *
+ * as output we need a status indication if TRX868 module is in receive, send or idle mode
+ * idle mode is then the indication for power down mode of AVR
+ */
 void     HM::setPowerMode(uint8_t mode) {
-	// there are 3 power modes for the TRX868 module
-	// TX mode will switched on while something is in the send queue
-	// 0 - RX mode enabled by default, take approx 17ma
-	// 1 - RX is in burst mode, RX will be switched on every 250ms to check if there is a carrier signal
-	//     if yes - RX will stay enabled until timeout is reached, prolongation of timeout via receive function seems not necessary
-	//				to be able to receive an ACK, RX mode should be switched on by send function
-	//     if no  - RX will go in idle mode and wait for the next carrier sense check
-	// 2 - RX is off by default, TX mode is enabled while sending something
-	//     configuration mode is required in this setup to be able to receive at least pairing and config request strings
-	//     should be realized by a 30 sec timeout function for RX mode
-	// as output we need a status indication if TRX868 module is in receive, send or idle mode
-	// idle mode is then the indication for power down mode of AVR
 
 	if        (mode == 1) {																// no power savings, RX is in receiving mode
 		set_sleep_mode(SLEEP_MODE_IDLE);												// normal power saving
@@ -101,19 +128,19 @@ void     HM::setPowerMode(uint8_t mode) {
 		powr.minTO = 2000;																// stay awake for 2 seconds after sending
 		powr.nxtTO = millis() + 250;													// check in 250ms for a burst signal
 
-		MCUSR &= ~(1<<WDRF);															// clear the reset flag
-		WDTCSR |= (1<<WDCE) | (1<<WDE);													// set control register to change enabled and enable the watch dog
+//		MCUSR &= ~(1<<WDRF);															// clear the reset flag
+		WDTCSR |= (1<<WDCE) | (1<<WDE);													// set control register to change and enable the watch dog
 		WDTCSR = 1<<WDP2;																// 250 ms
-		powr.wdTme = 256;																// store the watch dog time for adding in the poll function
+		powr.wdTme = 250;																// store the watch dog time for adding in the poll function
 		set_sleep_mode(SLEEP_MODE_PWR_DOWN);											// max power saving
 
 	} else if (mode == 3) {																// most power savings, RX is off beside a special function where RX stay in receive for 30 sec
-		MCUSR &= ~(1<<WDRF);															// clear the reset flag
-		WDTCSR |= (1<<WDCE) | (1<<WDE);													// set control register to change enabled and enable the watch dog
+//		MCUSR &= ~(1<<WDRF);															// clear the reset flag
+		WDTCSR |= (1<<WDCE) | (1<<WDE);													// set control register to change and enable the watch dog
 		WDTCSR = 1<<WDP2;																// 250 ms
 		//WDTCSR = 1<<WDP1 | 1<<WDP2;													// 1000 ms
 		//WDTCSR = 1<<WDP0 | 1<<WDP1 | 1<<WDP2;											// 2000 ms
-		//WDTCSR = 1<<WDP0 | 1<<WDP3;														// 8000 ms
+		//WDTCSR = 1<<WDP0 | 1<<WDP3;													// 8000 ms
 		powr.wdTme = 250;																// store the watch dog time for adding in the poll function
 		//powr.wdTme = 8190;																// store the watch dog time for adding in the poll function
 	}
@@ -129,14 +156,26 @@ void     HM::setPowerMode(uint8_t mode) {
 	powr.state = 1;																		// after init of the TRX module it is in RX mode
 	//Serial << "pwr.mode:" << powr.mode << '\n';
 }
+
 void     HM::stayAwake(uint32_t xMillis) {
-	if (powr.state == 0) cc.detectBurst();												// if TRX is in sleep, switch it on
-	powr.state = 1;																		// remember TRX state
-	if (powr.nxtTO > (millis() + xMillis)) return;										// set the new timeout only if necessary
-	powr.nxtTO = millis() + xMillis;													// stay awake for some time by setting next check time
+	if (powr.state == 0) {
+		cc.detectBurst();														// if TRX is in sleep, switch it on
+	}
+
+	powr.state = 1;																// remember TRX state
+
+	xMillis += millis();
+	if (powr.nxtTO > xMillis) {
+		return;																	// set the new timeout only if necessary
+	}
+
+	powr.nxtTO = xMillis;														// stay awake for some time by setting next check time
 }
 
-//- some functions for checking the config, preparing eeprom and load defaults to eeprom or in regs structure
+/**
+ * Some functions for checking the config, preparing eeprom and load defaults
+ * to eeprom or in regs structure
+ */
 void     HM::printConfig(void) {
 	uint8_t peer[4];
 	s_cnlDefType t;
@@ -146,7 +185,7 @@ void     HM::printConfig(void) {
 	for (uint8_t i = 0; i < dDef.lstNbr; i++) {
 
 		memcpy_P((void*)&t, &dDef.chPtr[i], sizeof(s_cnlDefType));
-		if ((t.lst == 3) || (t.lst == 4)) getCnlListByPeerIdx(t.cnl, 0);														// load list3/4
+		if ((t.lst == 3) || (t.lst == 4)) getCnlListByPeerIdx(t.cnl, 0);		// load list3/4
 		
 		Serial << F("cnl:") << t.cnl  << F(", lst:") << t.lst <<  F(", pMax:") << t.pMax <<  '\n';
 		Serial << F("idx:") << t.sIdx << F(", len:") << t.sLen << F(", addr:") << t.pAddr << '\n';
@@ -160,9 +199,10 @@ void     HM::printConfig(void) {
 		}
 		
 		for (uint8_t j = 1; j < t.pMax; j++) {
-			getCnlListByPeerIdx(t.cnl, j);													// load list3/4
+			getCnlListByPeerIdx(t.cnl, j);										// load list3/4
 			Serial << pHex((uint8_t*)t.pRegs, t.sLen) << ' ';
 		}
+
 		Serial << '\n';
 		for (uint8_t j = 0; j < t.pMax; j++) {
 			getPeerByIdx(t.cnl, j, peer);
@@ -170,23 +210,25 @@ void     HM::printConfig(void) {
 		}
 		Serial << F("\n\n");
 	}
+
 	Serial << '\n';
 }
+
 void     HM::prepEEprom(void) {
-	uint16_t crc = 0;																	// define variable for storing crc
-	uint8_t  *p = (uint8_t*)dDef.chPtr;													// cast devDef to char
+	uint16_t crc = 0;															// define variable for storing crc
+	uint8_t  *p = (uint8_t*)dDef.chPtr;											// cast devDef to char
 	
-	for (uint8_t i = 0; i < dDef.lstNbr; i++) {											// step through all lines of chDefType table
-		for (uint8_t j = 0; j < 9; j++) {												// step through the first 9 bytes
-			crc = crc16(crc, _pgmB(&p[(i*11)+j]));										// calculate the 16bit checksum for the table
+	for (uint8_t i = 0; i < dDef.lstNbr; i++) {									// step through all lines of chDefType table
+		for (uint8_t j = 0; j < 9; j++) {										// step through the first 9 bytes
+			crc = crc16(crc, _pgmB(&p[(i*11)+j]));								// calculate the 16bit checksum for the table
 		}
 	}
 	
-	#ifdef RPDB_DBG																		// some debug message
+	#ifdef RPDB_DBG																// some debug message
 	Serial << F("prepEEprom t_crc: ") << crc << F(", e_crc: ") << getEeWo(ee[0].magicNr) << '\n';
 	#endif
 
-	if (crc != getEeWo(ee[0].magicNr)) {												// compare against eeprom's magic number
+	if (crc != getEeWo(ee[0].magicNr)) {										// compare against eeprom's magic number
 		Serial << "prep eeprom\n";
 		#ifdef RPDB_DBG
 		Serial << F("format eeprom for:\n");
@@ -194,36 +236,36 @@ void     HM::prepEEprom(void) {
 		Serial << F("regsDB, addr:") << ee[0].regsDB << F(", len:") << ee[1].regsDB << '\n';
 		#endif
 		
-		clrEeBl(ee[0].peerDB, ee[1].peerDB);											// format the eeprom area
-		delay(50);																		// give eeprom some time
-		clrEeBl(ee[0].regsDB, ee[1].regsDB);											// format the eeprom area
-		delay(50);																		// give eeprom some time
-		
-		loadDefaults();																	// do we have some default settings
-		delay(50);																		// give eeprom some time
+		clrEeBl(ee[0].peerDB, ee[1].peerDB);									// format the eeprom area
+		_delay_ms(50);															// give eeprom some time
+
+		loadDefaults();															// do we have some default settings
+		_delay_ms(50);															// give eeprom some time
 	}
-	setEeWo(ee[0].magicNr,crc);															// write magic number to it's position
+	setEeWo(ee[0].magicNr,crc);													// write magic number to it's position
 }
+
 void     HM::loadDefaults(void) {
 	if (dtRegs.nbr) {
 		#ifdef RPDB_DBG
 		Serial << F("set defaults:\n");
 		#endif
 		
-		for (uint8_t i = 0; i < dtRegs.nbr; i++) {										// step through the table
-			s_defaultRegsTbl *t = &dtRegs.ptr[i];										// pointer for better handling
+		for (uint8_t i = 0; i < dtRegs.nbr; i++) {								// step through the table
+			s_defaultRegsTbl *t = &dtRegs.ptr[i];								// pointer for better handling
 			
 			// check if we search for regs or peer
 			uint16_t eeAddr = 0;
-			if (t->prIn == 0) {															// we are going for peer
-				eeAddr = cdPeerAddrByCnlIdx(t->cnl ,t->pIdx);							// get the eeprom address
-			} else if (t->prIn == 1) {													// we are going for regs
-				eeAddr = cdListAddrByCnlLst(t->cnl, t->lst ,t->pIdx);					// get the eeprom address
+			if (t->prIn == 0) {													// we are going for peer
+				eeAddr = cdPeerAddrByCnlIdx(t->cnl ,t->pIdx);					// get the eeprom address
+
+			} else if (t->prIn == 1) {											// we are going for regs
+				eeAddr = cdListAddrByCnlLst(t->cnl, t->lst ,t->pIdx);			// get the eeprom address
 			}
 			
 			// find the respective address and write to eeprom
-			for (uint8_t j = 0; j < t->len; j++) {										// step through the bytes
-				setEeBy(eeAddr++,_pgmB(&t->b[j]));										// read from PROGMEM and write to eeprom
+			for (uint8_t j = 0; j < t->len; j++) {								// step through the bytes
+				setEeBy(eeAddr++,_pgmB(&t->b[j]));								// read from PROGMEM and write to eeprom
 			}
 			
 			#ifdef RPDB_DBG																// some debug message
@@ -232,25 +274,27 @@ void     HM::loadDefaults(void) {
 		}
 	}
 }
+
 void     HM::loadRegs(void) {
 	// default regs filled regarding the cnlDefTable
-	for (uint8_t i = 0; i < dDef.lstNbr; i++) {											// step through the list
-		const s_cnlDefType *t = &dDef.chPtr[i];											// pointer for easier handling
+	for (uint8_t i = 0; i < dDef.lstNbr; i++) {									// step through the list
+		const s_cnlDefType *t = &dDef.chPtr[i];									// pointer for easier handling
 		
 		getEeBl(ee[0].regsDB + _pgmW(&t->pAddr), _pgmB(&t->sLen), (void*)_pgmW(&t->pRegs)); // load content from eeprom to user structure
 	}
 
 	// fill the master id
-	uint8_t ret = getRegAddr(0,0,0,0x0a,3,dParm.MAID);									// get regs for 0x0a
+	uint8_t ret = getRegAddr(0,0,0,0x0a,3,dParm.MAID);							// get regs for 0x0a
 	//Serial << "MAID:" << pHex(dParm.MAID,3) << '\n'; 	
 }
+
 void     HM::regCnlModule(uint8_t cnl, s_mod_dlgt Delegate, uint16_t *mainList, uint16_t *peerList) {
 	modTbl[cnl].mDlgt = Delegate;
 	modTbl[cnl].use = 1;
 	
 	// register the call back address for the list pointers
-	for (uint8_t i = 0; i < dDef.lstNbr; i++) {											// step through the list
-		const s_cnlDefType *t = &dDef.chPtr[i];											// pointer for easier handling
+	for (uint8_t i = 0; i < dDef.lstNbr; i++) {									// step through the list
+		const s_cnlDefType *t = &dDef.chPtr[i];									// pointer for easier handling
 		if (_pgmB(&t->cnl) != cnl) continue;
 
 		if (_pgmB(&t->lst) >= 3) *peerList = _pgmW(&t->pRegs);
@@ -258,50 +302,68 @@ void     HM::regCnlModule(uint8_t cnl, s_mod_dlgt Delegate, uint16_t *mainList, 
 	}
 
 }
+
 uint32_t HM::getHMID(void) {
 	uint8_t a[3];
-	a[0] = dParm.HMID[2];
-	a[1] = dParm.HMID[1];
-	a[2] = dParm.HMID[0];
+	a[0] = hmId[2];
+	a[1] = hmId[1];
+	a[2] = hmId[0];
 	a[3] = 0;
+
 	return *(uint32_t*)&a;
 }
+
 uint8_t  HM::getMsgCnt(void) {
 	return send.mCnt - 1;
 }
 
+//- -----------------------------------------------------------------------------------------------------------------------
 //- external functions for pairing and communicating with the module
-void     HM::startPairing(void) {														// send a pairing request to master
-	//                               01 02    03                            04 05 06 07
-	// 1A 00 A2 00 3F A6 5C 00 00 00 10 80 02 50 53 30 30 30 30 30 30 30 31 9F 04 01 01
-	statusLed.set(STATUSLED_2, STATUSLED_MODE_BLINKFAST);								// led blink in config mode
+//- -----------------------------------------------------------------------------------------------------------------------
 
-	//if (powr.mode > 1) stayAwake(powr.parTO);											// stay awake for the next 30 seconds
-	memcpy_P(send_payLoad, dParm.p, 17);												// copy details out of register.h
+/**
+ * Send a pairing request to master
+ *
+ *                                01 02    03                            04 05 06 07
+ *  1A 00 A2 00 3F A6 5C 00 00 00 10 80 02 50 53 30 30 30 30 30 30 30 31 9F 04 01 01
+ */
+void     HM::startPairing(void) {
+	statusLed.set(STATUSLED_2, STATUSLED_MODE_BLINKFAST);						// led blink in config mode
+
+	//if (powr.mode > 1) stayAwake(powr.parTO);									// stay awake for the next 30 seconds
+	memcpy_P(send_payLoad, dParm.p, 17);										// copy details out of register.h
 	send_prep(send.mCnt++,0xA2,0x00,dParm.MAID ,send_payLoad,17);
 }
+
 void     HM::sendInfoActuatorStatus(uint8_t cnl, uint8_t status, uint8_t flag) {
-	if (memcmp(dParm.MAID,bCast,3) == 0) return;										// not paired, nothing to send
+	if (memcmp(dParm.MAID,bCast,3) == 0) {
+		return;																	// not paired, nothing to send
+	}
 
 	//	"10;p01=06"   => { txt => "INFO_ACTUATOR_STATUS", params => {
 	//		CHANNEL => "2,2",
 	//		STATUS  => '4,2',
 	//		UNKNOWN => "6,2",
 	//		RSSI    => '08,02,$val=(-1)*(hex($val))' } },
-	send_payLoad[0] = 0x06;																// INFO_ACTUATOR_STATUS
-	send_payLoad[1] = cnl;																// channel
-	send_payLoad[2] = status;															// status
-	send_payLoad[3] = flag;																// unknown
-	send_payLoad[4] = cc.rssi;															// RSSI
+	send_payLoad[0] = 0x06;														// INFO_ACTUATOR_STATUS
+	send_payLoad[1] = cnl;														// channel
+	send_payLoad[2] = status;													// status
+	send_payLoad[3] = flag;														// unknown
+	send_payLoad[4] = cc.rssi;													// RSSI
 	
 	// if it is an answer to a CONFIG_STATUS_REQUEST we have to use the same message id as the request
 	uint8_t tCnt;
-	if ((recv.data[3] == 0x01) && (recv.data[11] == 0x0E)) tCnt = recv_rCnt;
-	else tCnt = send.mCnt++;
-	send_prep(tCnt,0xA4,0x10,dParm.MAID,send_payLoad,5);								// prepare the message
+	if ((recv.data[3] == 0x01) && (recv.data[11] == 0x0E)) {
+		tCnt = recv_rCnt;
+	} else {
+		tCnt = send.mCnt++;
+	}
+
+	send_prep(tCnt,0xA4,0x10,dParm.MAID,send_payLoad,5);						// prepare the message
 }
+
 void     HM::sendACKStatus(uint8_t cnl, uint8_t status, uint8_t douolo) {
-	//if (memcmp(regDev.pairCentral,broadCast,3) == 0) return;							// not paired, nothing to send
+	//if (memcmp(regDev.pairCentral,broadCast,3) == 0) return;					// not paired, nothing to send
 
 	//	"02;p01=01"   => { txt => "ACK_STATUS",  params => {
 	//		CHANNEL        => "02,2",
@@ -310,16 +372,17 @@ void     HM::sendACKStatus(uint8_t cnl, uint8_t status, uint8_t douolo) {
 	//		UP             => '06,02,$val=(hex($val)&0x10)?1:0',
 	//		LOWBAT         => '06,02,$val=(hex($val)&0x80)?1:0',
 	//		RSSI           => '08,02,$val=(-1)*(hex($val))', }},
-	send_payLoad[0] = 0x01;																// ACK Status
-	send_payLoad[1] = cnl;																// channel
-	send_payLoad[2] = status;															// status
-	send_payLoad[3] = douolo | (battery.state << 7);									// down, up, low battery
-	send_payLoad[4] = cc.rssi;															// RSSI
+	send_payLoad[0] = 0x01;														// ACK Status
+	send_payLoad[1] = cnl;														// channel
+	send_payLoad[2] = status;													// status
+	send_payLoad[3] = douolo | (battery.state << 7);							// down, up, low battery
+	send_payLoad[4] = cc.rssi;													// RSSI
 	
 	// l> 0E EA 80 02 1F B7 4A 63 19 63 01 01 C8 00 4B
 	//send_prep(recv_rCnt,0x80,0x02,regDev.pairCentral,send_payLoad,5);	// prepare the message
-	send_prep(recv_rCnt,0x80,0x02,recv_reID,send_payLoad,5);							// prepare the message
+	send_prep(recv_rCnt,0x80,0x02,recv_reID,send_payLoad,5);					// prepare the message
 }
+
 void     HM::sendPeerREMOTE(uint8_t cnl, uint8_t longPress, uint8_t lowBat) {
 	// no data needed, because it is a (40)REMOTE EVENT
 	// "40"          => { txt => "REMOTE"      , params => {
@@ -332,28 +395,39 @@ void     HM::sendPeerREMOTE(uint8_t cnl, uint8_t longPress, uint8_t lowBat) {
 	// l> 0B 0A B4  40    1F A6 5C   1F B7 4A   01    01 (l:12)(160188)
 	// l> 0B 0B B4 40 1F A6 5C 1F B7 4A 41 02 (l:12)(169121)
 
-	pevt.t = cnlDefbyPeer(cnl);															// get the index number in cnlDefType
-	if (pevt.t == NULL) return;
+	pevt.t = cnlDefbyPeer(cnl);													// get the index number in cnlDefType
+	if (pevt.t == NULL) {
+		return;
+	}
+
 	//pevt.msgCnt = dParm.cnlCnt[cnl];
 	pevt.msgCnt = modTbl[cnl].msgCnt;
 
-	if (longPress == 1) pevt.reqACK = 0;												// repeated messages do not need an ACK
-	else pevt.reqACK = 0x20;
+	if (longPress == 1) {
+		pevt.reqACK = 0;														// repeated messages do not need an ACK
+	} else {
+		pevt.reqACK = 0x20;
+	}
 
-	pevt.type = 0x40;																	// we want to send an remote event
+	pevt.type = 0x40;															// we want to send an remote event
 
-	if (battery.state) lowBat = 1;
-	pevt.data[0] = cnl | ((longPress)?1:0) << 6 | lowBat << 7;							// construct message
+	if (battery.state) {
+		lowBat = 1;
+	}
 
-	pevt.data[1] = modTbl[cnl].msgCnt++;												// increase event counter, important for switch event
-//	pevt.data[1] = dParm.cnlCnt[cnl]++;													// increase event counter, important for switch event
-	pevt.len = 2;																		// 2 bytes payload
+	pevt.data[0] = cnl | ((longPress)?1:0) << 6 | lowBat << 7;					// construct message
+
+	pevt.data[1] = modTbl[cnl].msgCnt++;										// increase event counter, important for switch event
+//	pevt.data[1] = dParm.cnlCnt[cnl]++;											// increase event counter, important for switch event
+	pevt.len = 2;																// 2 bytes payload
 
 	pevt.act = 1;																		// active, 1 = yes, 0 = no
 	//Serial << "remote; cdpIdx:" << pevt.cdpIdx << ", type:" << pHexB(pevt.type) << ", rACK:" << pHexB(pevt.reqACK) << ", msgCnt:" << pevt.msgCnt << ", data:" << pHex(pevt.data,pevt.len) << '\n';
 }
-void     HM::sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum, uint16_t pres) {
-	// "70"          => { txt => "WeatherEvent", params => {
+//void     HM::sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum, uint16_t pres, uint32_t lux) {
+// debugging
+
+void     HM::sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum, uint16_t pres, uint32_t lux) {
 	//	TEMP     => '00,4,$val=((hex($val)&0x3FFF)/10)*((hex($val)&0x4000)?-1:1)',
 	//	HUM      => '04,2,$val=(hex($val))', } },
 
@@ -361,27 +435,37 @@ void     HM::sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum, uint16_t p
 	// l> 0C 0A B4  70    1F A6 5C   1F B7 4A   01 01   01 (l:13)(160188)
 	// l> 0B 0B B4  40    1F A6 5C   1F B7 4A 41 02 (l:12)(169121)
 
-	pevt.t = cnlDefbyPeer(cnl);															// get the index number in cnlDefType
+	pevt.t = cnlDefbyPeer(cnl);													// get the index number in cnlDefType
 	if (pevt.t == NULL) return;
-	//Serial << "se\n";
 	
-	pevt.type = 0x70;																	// we want to send a weather event
-	pevt.reqACK = 0x20;																	// we like to get an ACK
+	pevt.type = 0x70;															// 0x70 -> frame-id for weather event
+	pevt.reqACK = 0x20;															// we like to get an ACK
 
-	pevt.data[0] = (temp >> 8) & 0xFF | battery.state << 7;
+	pevt.data[0] = (temp >> 8) & 0xFF | battery.state << 7;						// temperature data
 	pevt.data[1] = temp & 0xFF;
-	pevt.data[2] = hum;
-	
-	pevt.data[3] = (pres >> 8) & 0xFF;
+
+	pevt.data[2] = hum;															// humidity
+
+	pevt.data[3] = (pres >> 8) & 0xFF;											// air pressure
 	pevt.data[4] = pres & 0xFF;
-	if (pres) pevt.len = 5;																// 5 bytes payload with pressure
-	else pevt.len = 3;																	// if pressure is empty, then we have only3 bytes
-	
+
+	pevt.data[5] = (lux >> 24) & 0xFFFFFF;										// luminosity
+	lux = lux & 0xFFFFFF;
+	pevt.data[6] = (lux >> 16) & 0xFFFF;
+	lux = lux & 0xFFFF;
+	pevt.data[7] = (lux >> 8) & 0xFF;
+	pevt.data[8] = lux & 0xFF;
+
+	pevt.data[9] = (battery.voltage >> 8) & 0xFF;								// battery voltage
+	pevt.data[10] = battery.voltage & 0xFF;
+
+	pevt.len = 11;
+
 	pevt.msgCnt++;
 	
-	pevt.act = 1;																		// active, 1 = yes, 0 = no
-	//Serial << "remote; cdpIdx:" << pevt.cdpIdx << ", type:" << pHexB(pevt.type) << ", rACK:" << pHexB(pevt.reqACK) << ", msgCnt:" << pevt.msgCnt << ", data:" << pHex(pevt.data,pevt.len) << '\n';
+	pevt.act = 1;																// active, 1 = yes, 0 = no
 }
+
 void     HM::sendPeerRAW(uint8_t cnl, uint8_t type, uint8_t *data, uint8_t len) {
 	// validate the input, and fill the respective variables in the struct
 	// message handling is taken from send_peer_poll
@@ -417,18 +501,30 @@ void     HM::send_NACK(void) {
 //- hm communication functions
 void     HM::recv_poll(void) {															// handles the receive objects
 	// do some checkups
-	if (memcmp(&recv.data[7], dParm.HMID, 3) == 0) recv.forUs = 1;						// for us
-	else recv.forUs = 0;
-	if (memcmp(&recv.data[7], bCast, 3) == 0)      recv.bCast = 1;						// or a broadcast
-	else recv.bCast = 0;																// otherwise only a log message
+	if (memcmp(&recv.data[7], hmId, 3) == 0) {
+		recv.forUs = 1;																	// for us
+	} else {
+		recv.forUs = 0;
+	}
+
+	if (memcmp(&recv.data[7], bCast, 3) == 0) {
+		recv.bCast = 1;																	// or a broadcast
+	} else {
+		recv.bCast = 0;																	// otherwise only a log message
+	}
 	
 	// show debug message
 	#ifdef AS_DBG																		// some debug message
-	if(recv.forUs) Serial << F("-> ");
-	else if(recv.bCast) Serial << F("b> ");
-	else Serial << F("l> ");
-	Serial << pHexL(recv.data, recv.data[0]+1) << pTime();
-	exMsg(recv.data);																	// explain message
+		if(recv.forUs) {
+			Serial << F("-> ");
+		} else if(recv.bCast) {
+			Serial << F("b> ");
+		} else {
+			Serial << F("l> ");
+		}
+
+		Serial << pHexL(recv.data, recv.data[0]+1) << pTime();
+		exMsg(recv.data);																// explain message
 	#endif
 
 	// if it's not for us or a broadcast message we could skip
@@ -437,21 +533,29 @@ void     HM::recv_poll(void) {															// handles the receive objects
 		return;
 	}
 
+	// ToDo: Workaround for pairing problems with CCU. We should fix this
+	// x:1A CA E5, y: 16 30 83
+/*
 	// is the message from a valid sender (pair or peer), if not then exit - takes ~2ms
-	if ((isPairKnown(recv_reID) == 0) && (isPeerKnown(recv_reID) == 0)) {				// check against peers
+	if (isPairKnown(recv_reID) == 0) {													// check against peers
 		#if defined(AS_DBG)																// some debug message
-		Serial << "pair/peer did not fit, exit\n";
+			Serial << "pair/peer did not fit, exit\n";
 		#endif
+
 		recv.data[0] = 0;																// clear receive string
 		return;
 	}
+*/
 
 	// check if it was a repeated message, delete while already received
 	if (recv_isRpt) {																	// check repeated flag
 		#if defined(AS_DBG)																// some debug message
-		Serial << F("   repeated message; ");
-		if (recv.mCnt == recv_rCnt) Serial << F("already received - skip\n");
-		else Serial << F("not received before...\n");
+			Serial << F("   repeated message; ");
+			if (recv.mCnt == recv_rCnt) {
+				Serial << F("already received - skip\n");
+			} else {
+				Serial << F("not received before...\n");
+			}
 		#endif
 		
 		if (recv.mCnt == recv_rCnt) {													// already received
@@ -465,7 +569,6 @@ void     HM::recv_poll(void) {															// handles the receive objects
 		recv.mCnt = recv_rCnt;
 	}
 
-	
 	if (((recv.forUs) || (recv.bCast)) && (recv_isMsg)) {								// message is a config message
 		if (recv_msgTp == 0x01) {														// configuration message handling
 			recv_PairConfig();
@@ -476,7 +579,7 @@ void     HM::recv_poll(void) {															// handles the receive objects
 			if (pevt.act == 1) {
 				// we got an ACK after key press?
 				statusLed.stop(STATUSLED_BOTH);
-				statusLed.set(STATUSLED_1, STATUSLED_MODE_BLINKFAST, 1);				// blink led 1 once
+				statusLed.set(STATUSLED_1, STATUSLED_MODE_BLINKSFAST, 1);				// blink led 1 once
 			}
 	
 		} else if (recv_msgTp == 0x11) {												// pair event handling
@@ -488,17 +591,22 @@ void     HM::recv_poll(void) {															// handles the receive objects
 		}
 
 		#if defined(AS_DBG)																// some debug message
-		else Serial << F("\nUNKNOWN MESSAGE, PLEASE REPORT!\n\n");
+			else Serial << F("\nUNKNOWN MESSAGE, PLEASE REPORT!\n\n");
 		#endif
 	}
 	
-	if (recv.forUs) main_Jump();														// does main sketch want's to be informed?
+	if (recv.forUs) {
+		main_Jump();																	// does main sketch want's to be informed?
+	}
 
 	//to do: if it is a broadcast message, do something with
 	recv.data[0] = 0;																	// otherwise ignore
 }
+
 void     HM::send_poll(void) {															// handles the send queue
-	if((send.counter <= send.retries) && (send.timer <= millis())) {					// not all sends done and timing is OK
+	unsigned long mils = millis();
+
+	if((send.counter <= send.retries) && (send.timer <= mils)) {					// not all sends done and timing is OK
 		
 		// here we encode and send the string
 		hm_enc(send.data);																// encode the string
@@ -509,16 +617,16 @@ void     HM::send_poll(void) {															// handles the send queue
 		
 		// setting some variables
 		send.counter++;																	// increase send counter
-		send.timer = millis() + dParm.timeOut;											// set the timer for next action
+		send.timer = mils + dParm.timeOut;											// set the timer for next action
 		powr.state = 1;																	// remember TRX module status, after sending it is always in RX mode
-		if ((powr.mode > 0) && (powr.nxtTO < (millis() + powr.minTO))) stayAwake(powr.minTO); // stay awake for some time
+		if ((powr.mode > 0) && (powr.nxtTO < (mils + powr.minTO))) stayAwake(powr.minTO); // stay awake for some time
 
 		#if defined(AS_DBG)																// some debug messages
 		Serial << F("<- ") << pHexL(send.data, send.data[0]+1) << pTime();
 		#endif
 
 		if (pevt.act == 1) {
-			statusLed.set(STATUSLED_BOTH, STATUSLED_MODE_BLINKFAST, 1);					// blink led 1 and led 2 once after key press
+			statusLed.set(STATUSLED_BOTH, STATUSLED_MODE_BLINKSFAST, 1);					// blink led 1 and led 2 once after key press
 		}
 	}
 	
@@ -526,7 +634,7 @@ void     HM::send_poll(void) {															// handles the send queue
 		send.counter = 0; send.timer = 0;												// clear send flag
 	}
 	
-	if((send.counter > send.retries) && (send.timer <= millis())) {						// max retries achieved, but seems to have no answer
+	if((send.counter > send.retries) && (send.timer <= mils)) {							// max retries achieved, but seems to have no answer
 		send.counter = 0; send.timer = 0;												// cleanup of send buffer
 		// todo: error handling, here we could jump some were to blink a led or whatever
 		
@@ -539,7 +647,8 @@ void     HM::send_poll(void) {															// handles the send queue
 		Serial << F("-> NA ") << pTime();
 		#endif
 	}
-}																															// ready, should work
+}																										// ready, should work
+
 void     HM::send_conf_poll(void) {
 	if (send.counter > 0) return;														// send queue is busy, let's wait
 	uint8_t len;
@@ -589,6 +698,7 @@ void     HM::send_conf_poll(void) {
 	}
 	
 }
+
 void     HM::send_peer_poll(void) {
 	// step through the peers and send the message
 	// if we didn't found a peer to send to, then send status to master
@@ -639,6 +749,7 @@ void     HM::send_peer_poll(void) {
 	//Serial << "rB:" << pHexB(lB[0]) << '\n';
 	send_prep(send.mCnt++,(0x82|pevt.reqACK|bitRead(lB[0],0)<<4),pevt.type,(uint8_t*)&tPeer,pevt.data,pevt.len); // prepare the message
 }
+
 void     HM::power_poll(void) {
 	// there are 3 power modes for the TRX868 module
 	// TX mode will switched on while something is in the send queue
@@ -653,69 +764,84 @@ void     HM::power_poll(void) {
 	//     system time in millis will be hold by a regular wakeup from the watchdog timer
 	// 4 - Same as power mode 3 but without watchdog
 	
-	if (powr.mode == 0) return;															// in mode 0 there is nothing to do
-	if (powr.nxtTO > millis()) return;													// no need to do anything
-	if (send.counter > 0) return;														// send queue not empty
+
+	if (powr.mode == 0)    return;												// in mode 0 there is nothing to do
+
+	unsigned long mils = millis();
+	if (powr.nxtTO > mils) return;												// no need to do anything
+
+	if (send.counter > 0)  return;												// send queue not empty
 	
-	// power mode 2, module is in sleep and next check is reached
 	if ((powr.mode == 2) && (powr.state == 0)) {
-		if (cc.detectBurst()) {															// check for a burst signal, if we have one, we should stay awake
-			powr.nxtTO = millis() + powr.minTO;											// schedule next timeout with some delay
-		} else {																		// no burst was detected, go to sleep in next cycle
-			powr.nxtTO = millis();														// set timer accordingly
+		uint32_t nxtTO;
+
+		// power mode 2, module is in sleep and next check is reached
+		if (cc.detectBurst()) {													// check for a burst signal, if we have one, we should stay awake
+			nxtTO = millis() + powr.minTO;										// schedule next timeout with some delay
+		} else {																// no burst was detected, go to sleep in next cycle
+			nxtTO = millis();													// set timer accordingly
 		}
-		powr.state = 1;																	// set status to awake
+
+		powr.state = 1;
+		powr.nxtTO = nxtTO;
+
 		return;
-	}
 
-	// power mode 2, module is active and next check is reached
-	if ((powr.mode == 2) && (powr.state == 1)) {
-		cc.setPowerDownState();															// go to sleep
+	} else if ((powr.mode == 2) && (powr.state == 1)) {
+		// power mode 2, module is active and next check is reached
+
+		cc.setPowerDownState();													// go to sleep
 		powr.state = 0;
-		powr.nxtTO = millis() + 250;													// schedule next check in 250 ms
-	}
+		powr.nxtTO = millis() + 250;											// schedule next check in 250 ms
 
-	// 	power mode 3, check RX mode against timer. typically RX is off beside a special command to switch RX on for at least 30 seconds
-	if ((powr.mode >= 3) && (powr.state == 1)) {
-		cc.setPowerDownState();															// go to sleep
+	} else if ((powr.mode >= 3) && (powr.state == 1)) {
+		// 	power mode 3, check RX mode against timer. typically RX is off beside a special command to switch RX on for at least 30 seconds
+		cc.setPowerDownState();													// go to sleep
 		powr.state = 0;
-	}
 
-	// sleep for mode 2, 3 and 4
-	if ((powr.mode > 1) && (powr.state == 0)) {											// TRX module is off, so lets sleep for a while
-		statusLed.stop(STATUSLED_BOTH);													// stop blinking, because we are going to sleep
-		if ((powr.mode == 2) || (powr.mode == 3)) WDTCSR |= (1<<WDIE);					// enable watch dog if power mode 2 or 3
+	} else if ((powr.mode > 1) && (powr.state == 0)) {							// TRX module is off, so lets sleep for a while
+		// sleep for mode 2, 3 and 4
+//		Serial.println ("Goto sleep");	delay(100);	//hfm debug
 
-		//Serial << ":";
-		//delay(100);
+		statusLed.stop(STATUSLED_BOTH);											// stop blinking, because we are going to sleep
+		if ((powr.mode == 2) || (powr.mode == 3)) {
+			WDTCSR |= (1<<WDIE);												// enable watch dog if power mode 2 or 3
+		}
 
-		ADCSRA = 0;																		// disable ADC
-		uint8_t xPrr = PRR;																// turn off various modules
+//		Serial << ":";
+//		delay(100);
+
+		ADCSRA = 0;																// disable ADC
+		uint8_t xPrr = PRR;														// turn off various modules
 		PRR = 0xFF;
 
-		sleep_enable();																	// enable the sleep mode
+		sleep_enable();															// enable the sleep mode
 
-		MCUCR = (1<<BODS)|(1<<BODSE);													// turn off brown-out enable in software
-		MCUCR = (1<<BODS);																// must be done right before sleep
+		MCUCR = (1<<BODS)|(1<<BODSE);											// turn off brown-out enable in software
+		MCUCR = (1<<BODS);														// must be done right before sleep
 
-		sleep_cpu();																	// goto sleep
+		sleep_cpu();															// goto sleep
 
 		/* wake up here */
 		
-		sleep_disable();																// disable sleep
-		if ((powr.mode == 2) || (powr.mode == 3)) WDTCSR &= ~(1<<WDIE);					// disable watch dog
-		PRR = xPrr;																		// restore modules
-		
-		if (wd_flag == 1) {																// add the watchdog time to millis()
-			wd_flag = 0;																// to detect the next watch dog timeout
-			timer0_millis += powr.wdTme;												// add watchdog time to millis() function
-		} else {
-			stayAwake(powr.minTO);														// stay awake for some time, if the wakeup where not raised from watchdog
+		sleep_disable();														// disable sleep
+		if ((powr.mode == 2) || (powr.mode == 3)) {
+			WDTCSR &= ~(1<<WDIE);												// disable watch dog
 		}
-		//Serial << ".";
 
+		PRR = xPrr;																// restore modules
+		
+		if (wd_flag == 1) {														// add the watchdog time to millis()
+			wd_flag = 0;														// to detect the next watch dog timeout
+			timer0_millis += powr.wdTme;										// add watchdog time to millis() function
+		} else {
+			stayAwake(powr.minTO);												// stay awake for some time, if the wakeup where not raised from watchdog
+		}
+
+//		Serial << ".";
 	}
 }
+
 void     HM::module_poll(void) {
 	for (uint8_t i = 0; i <= dDef.cnlNbr; i++) {
 		if (modTbl[i].use) modTbl[i].mDlgt(0,0,0,NULL,0);
@@ -1080,11 +1206,14 @@ void     HM::recv_PeerEvent(void) {
 	// send appropriate answer ---------------------------------------------
 	// answer should be initiated by client function in user area
 }
+
 uint8_t  HM::main_Jump(void) {
 	uint8_t ret = 0;
 	for (uint8_t i = 0; ; i++) {														// find the call back function
 		s_jumptable *p = &jTbl[i];														// some shorthand
-		if (p->by3 == 0) break;															// break if on end of list
+		if (p->by3 == 0) {
+			break;																		// break if on end of list
+		}
 		
 		if ((p->by3 != recv_msgTp) && (p->by3  != 0xff)) continue;						// message type didn't fit, therefore next
 		if ((p->by10 != recv_by10) && (p->by10 != 0xff)) continue;						// byte 10 didn't fit, therefore next
@@ -1094,6 +1223,7 @@ uint8_t  HM::main_Jump(void) {
 		p->fun(recv_payLoad, recv_len - 9);												// and jump into
 		ret = 1;																		// remember that we found a valid function to jump into
 	}
+
 	return ret;
 }
 uint8_t  HM::module_Jump(uint8_t *by3, uint8_t *by10, uint8_t *by11, uint8_t *cnl, uint8_t *data, uint8_t len) {
@@ -1120,7 +1250,7 @@ void     HM::send_prep(uint8_t msgCnt, uint8_t comBits, uint8_t msgType, uint8_t
 
 	send.data[2]  = comBits;															// take the communication bits
 	send.data[3]  = msgType;															// message type
-	memcpy(&send.data[4], dParm.HMID, 3);												// source id
+	memcpy(&send.data[4], hmId, 3);														// source id
 	memcpy(&send.data[7], targetID, 3);													// target id
 
 	if ((uint16_t)payLoad != (uint16_t)send_payLoad)
@@ -1518,10 +1648,9 @@ HM hm;
 
 //- interrupt handling for interface communication module to AskSin library
 void isrGDO0() {
-	detachInterrupt(intGDO0.nbr);														// switch interrupt off
-	intGDO0.ptr->recvInterrupt();														// call the interrupt handler of the active AskSin class
-	attachInterrupt(intGDO0.nbr,isrGDO0,FALLING);										// switch interrupt on again
+	int0_flag = true;
 }
+
 ISR( WDT_vect ) {
 	wd_flag = 1;
 }
