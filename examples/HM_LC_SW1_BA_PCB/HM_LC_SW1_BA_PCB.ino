@@ -80,7 +80,7 @@ void switchRelay(uint8_t on) {
 	if (on) {
 		digitalWrite(5,1);
 
-		} else {
+	} else {
 		digitalWrite(5,0);
 		
 	}
