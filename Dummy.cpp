@@ -9,13 +9,13 @@
 
 
 //- mandatory functions for every new module to communicate within HM protocol stack --------------------------------------
-void MyClassName::configCngEvent(void) {
+void Dummy::configCngEvent(void) {
 	// it's only for information purpose while something in the channel config was changed (List0/1 or List3/4)
 	#ifdef DM_DBG
 	Serial << F("configCngEvent\n");
 	#endif
 }
-void MyClassName::pairSetEvent(uint8_t *data, uint8_t len) {
+void Dummy::pairSetEvent(uint8_t *data, uint8_t len) {
 	// we received a message from master to set a new value, typical you will find three bytes in data
 	// 1st byte = value; 2nd byte = ramp time; 3rd byte = duration time;
 	// after setting the new value we have to send an enhanced ACK (<- 0E E7 80 02 1F B7 4A 63 19 63 01 01 C8 00 54)
@@ -28,7 +28,7 @@ void MyClassName::pairSetEvent(uint8_t *data, uint8_t len) {
 		
 	hm->sendACKStatus(regCnl,modStat,0);
 }
-void MyClassName::pairStatusReq(void) {
+void Dummy::pairStatusReq(void) {
 	// we received a status request, appropriate answer is an InfoActuatorStatus message
 	#ifdef DM_DBG
 	Serial << F("pairStatusReq\n");
@@ -36,7 +36,7 @@ void MyClassName::pairStatusReq(void) {
 	
 	hm->sendInfoActuatorStatus(regCnl, modStat, 0);
 }
-void MyClassName::peerMsgEvent(uint8_t type, uint8_t *data, uint8_t len) {
+void Dummy::peerMsgEvent(uint8_t type, uint8_t *data, uint8_t len) {
 	// we received a peer event, in type you will find the marker if it was a switch(3E), remote(40) or sensor(41) event
 	// appropriate answer is an ACK
 	#ifdef DM_DBG
@@ -46,17 +46,17 @@ void MyClassName::peerMsgEvent(uint8_t type, uint8_t *data, uint8_t len) {
 	hm->send_ACK();
 }
 
-void MyClassName::poll(void) {
+void Dummy::poll(void) {
 	// just polling, as the function name said
 }
 
 //- predefined, no reason to touch ----------------------------------------------------------------------------------------
-void MyClassName::regInHM(uint8_t cnl, HM *instPtr) {
+void Dummy::regInHM(uint8_t cnl, HM *instPtr) {
 	hm = instPtr;																		// set pointer to the HM module
-	hm->regCnlModule(cnl,s_mod_dlgt(this,&MyClassName::hmEventCol),(uint16_t*)&ptrMainList,(uint16_t*)&ptrPeerList);
+	hm->regCnlModule(cnl,s_mod_dlgt(this,&Dummy::hmEventCol),(uint16_t*)&ptrMainList,(uint16_t*)&ptrPeerList);
 	regCnl = cnl;																		// stores the channel we are responsible fore
 }
-void MyClassName::hmEventCol(uint8_t by3, uint8_t by10, uint8_t by11, uint8_t *data, uint8_t len) {
+void Dummy::hmEventCol(uint8_t by3, uint8_t by10, uint8_t by11, uint8_t *data, uint8_t len) {
 	if       (by3 == 0x00)                    poll();
 	else if ((by3 == 0x01) && (by11 == 0x06)) configCngEvent();
 	else if ((by3 == 0x11) && (by10 == 0x02)) pairSetEvent(data, len);
@@ -65,7 +65,7 @@ void MyClassName::hmEventCol(uint8_t by3, uint8_t by10, uint8_t by11, uint8_t *d
 	else if  (by3 >= 0x3E)                    peerMsgEvent(by3, data, len);
 	else return;
 }
-void MyClassName::peerAddEvent(uint8_t *data, uint8_t len) {
+void Dummy::peerAddEvent(uint8_t *data, uint8_t len) {
 	// we received an peer add event, which means, there was a peer added in this respective channel
 	// 1st byte and 2nd byte shows the peer channel, 3rd and 4th byte gives the peer index
 	// no need for sending an answer, but we could set default data to the respective list3/4

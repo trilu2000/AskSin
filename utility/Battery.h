@@ -15,28 +15,42 @@
 	#include "WProgram.h"
 #endif
 
+#include <util/delay.h>
+#include <Wire.h>
 #include <Serial.h>
-
 
 class Battery {
   public://----------------------------------------------------------------------------------------------------------------
 	
 	uint8_t state;																		// status byte for message handling
-	void config(uint8_t mode, uint8_t pin, uint16_t time);								// mode 0 is off, mode 1 for internal battery check - more to come
-	void setVoltage(uint8_t tenthVolts);												// set the reference voltage in 0.1 volts
+	uint16_t voltage;																	// last measured battery voltage
+
+	void config(uint8_t mode, uint8_t enablePin, uint8_t adcPin, float fact, uint16_t time);
+	void setMinVoltage(uint8_t tenthVolts);												// set the reference voltage in 0.1 volts
 
 	void poll(void);																	// poll for periodic check
 
   private://---------------------------------------------------------------------------------------------------------------
 	uint8_t  tMode;																		// remember the mode
-	uint8_t  tTenthVolts;																// remember the tenth volts set
+	uint8_t  tEnablePin;
+	uint8_t  tAdcPin;
+	float    tFact;
 	uint16_t tTime;																		// remember the time for periodic check
 	uint32_t nTime;																		// timer for periodic check
+	uint8_t  tTenthVolts;																// remember the tenth volts set
 
-	#define BATTERY_NUM_MESS_ADC       64
-	#define BATTERY_DUMMY_NUM_MESS_ADC 10
-	#define AVR_BANDGAP_VOLTAGE        1100UL											// Band gap reference for Atmega328p
-	uint16_t getBatteryVoltage(uint32_t bandgapVoltage);								// measure the battery
+	#define BATTERY_NUM_MESS_ADC              64
+	#define BATTERY_DUMMY_NUM_MESS_ADC        10
+	#define AVR_BANDGAP_VOLTAGE               1100UL									// Band gap reference for Atmega328p
+
+	#define BATTERY_MODE_BANDGAP_MESSUREMENT  1
+	#define BATTERY_MODE_EXTERNAL_MESSUREMENT 2
+
+
+	uint16_t getBatteryVoltageInternal();
+	uint16_t getBatteryVoltageExternal();
+
+	uint16_t getAdcValue(uint8_t voltageReference, uint8_t inputChannel);
 };
 
 #endif

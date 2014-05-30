@@ -31,6 +31,7 @@
 #include "utility/StatusLed.h"
 #include "utility/Battery.h"
 #include "utility/Fastdelegate.h"
+#include <util/delay.h>
 
 
 //- some structures for device definition in Register.h -------------------------------------------------------------------
@@ -55,6 +56,7 @@ struct s_defaultRegsTbl {		// struct for storing some defaults
 //- -----------------------------------------------------------------------------------------------------------------------
 
 //- interrupt handling
+static volatile uint8_t int0_flag;
 static volatile uint8_t wd_flag;
 extern volatile unsigned long timer0_millis;											// make millis timer available for correcting after deep sleep
 
@@ -107,7 +109,6 @@ class HM {
 	#define recv_payLoad		(recv.data + 10)										// payload for receive queue
 
 	struct s_devParm {
-		uint8_t  HMID[3];																// own HMID
 		uint8_t  maxRetr;																// max send retries
 		uint16_t timeOut;																// timeout for ACK sending
 		const uint8_t  *p;																// pointer to PROGMEM serial number, etc
@@ -141,9 +142,10 @@ class HM {
 	StatusLed statusLed;																// declaration of status led
 	Battery battery;
 
+	char hmId[3];																		// own HMID
+
 	//- homematic public protocol functions
 	void     init(void);																// Ok, initialize the HomeMatic module
-	void     recvInterrupt(void);														// Ok, interrupt handler for receive interrupt
 	void     poll(void);																// OK, main task to manage TX and RX messages
 	void     send_out(void);															// OK, send function
 
@@ -165,7 +167,9 @@ class HM {
 	void     sendInfoActuatorStatus(uint8_t cnl, uint8_t status, uint8_t flag);			// , send status function
 	void     sendACKStatus(uint8_t cnl, uint8_t status, uint8_t douolo);				// , send ACK with status
 	void     sendPeerREMOTE(uint8_t button, uint8_t longPress, uint8_t lowBat);			// (0x40) send REMOTE event to all peers
-	void     sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum, uint16_t pres);	// (0x70) send WEATHER event
+//	void     sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum, uint16_t pres, uint32_t lux);	// (0x70) send WEATHER event
+	// debugging
+	void     sendPeerWEATHER(uint8_t cnl, uint16_t temp, uint8_t hum, uint16_t pres, uint32_t lux);
 	void     sendPeerRAW(uint8_t cnl, uint8_t type, uint8_t *data, uint8_t len);		// send event to all peers listed in the peers database by channel, type specifies the type of the message, data and len delivers the content of the event
 	void     send_ACK(void);															// , ACK sending function
 	void     send_NACK(void);															// , NACK sending function
@@ -208,6 +212,7 @@ class HM {
 	#define  recv_toMst			bitRead(recv.data[2],1)									// message to master, true if 0x02 was set
 
 	//- hm communication functions
+	void     cc1101Recv_poll(void);
 	void     recv_poll(void);															// handles the received string
 	void     send_poll(void);															// handles the send queue
 	void     send_conf_poll(void);														// handles information requests
@@ -291,8 +296,8 @@ extern HM hm;
 //- interrupt handling for interface communication module to AskSin library 
 struct s_intGDO0 {
 	uint8_t nbr;
-	HM *ptr;	
 };
+
 void isrGDO0(void);
 
 ISR( WDT_vect );
