@@ -11,7 +11,7 @@ const uint8_t devParam[] PROGMEM = {
 };
 
 HM::s_devParm dParm = {
-/* device HM Id     3 byte */ {0xF4, 0xB6, 0x5C},						// very important, must be unique. identifier for the device in the network
+///* device HM Id     3 byte */ {0xF4, 0xB6, 0x5C},						// very important, must be unique. identifier for the device in the network
 /* send retries		1 byte */  3,										// how often a string should be send out until we get an answer
 /* send timeout     2 byte */  700,										// time out for ACK handling
 /* pointer to serial       */  devParam,

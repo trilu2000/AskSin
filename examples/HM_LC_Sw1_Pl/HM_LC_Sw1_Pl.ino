@@ -56,7 +56,7 @@ void setup() {
 	hm.statusLed.config(4, 5);															// configure the status led pin
 	hm.statusLed.set(STATUSLED_BOTH, STATUSLED_MODE_BLINKFAST, 3);
 
-	hm.battery.config(0,0,1000);														// set battery measurement
+	//hm.battery.config(0,0,1000);														// set battery measurement
 	//hm.battery.setVoltage(31);															// voltage to 3.1 volt
 
 	hm.setPowerMode(0);																	// power mode for HM device
