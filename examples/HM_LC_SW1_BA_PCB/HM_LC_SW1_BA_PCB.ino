@@ -50,8 +50,8 @@ void setup() {
 	hm.statusLed.config(4, 6);															// configure the status led pin
 	hm.statusLed.set(STATUSLED_BOTH, STATUSLED_MODE_BLINKFAST, 3);
 
-	hm.battery.config(1,0,1000);														// set battery measurement
-	hm.battery.setVoltage(31);															// voltage to 3.1 volt
+	hm.battery.config(0,0,0,0,10000);													// set battery measurement
+	hm.battery.setMinVoltage(31);														// voltage to 3.1 volt
 
 	hm.setPowerMode(0);																	// power mode for HM device
 	hm.init();																			// initialize the hm module
@@ -73,15 +73,15 @@ void loop() {
 
 
 void initRelay() {
-	digitalWrite(5,0);
-	pinMode(5,OUTPUT);
+	digitalWrite(3,0);
+	pinMode(3,OUTPUT);
 }
 void switchRelay(uint8_t on) {
 	if (on) {
-		digitalWrite(5,1);
+		digitalWrite(3,1);
 
 	} else {
-		digitalWrite(5,0);
+		digitalWrite(3,0);
 		
 	}
 }
